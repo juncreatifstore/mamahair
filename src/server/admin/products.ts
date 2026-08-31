@@ -177,6 +177,44 @@ export async function deleteVariant(productId: string, variantId: string): Promi
   return { ok: true };
 }
 
+// ---- Images ----
+export async function uploadProductImages(productId: string, formData: FormData): Promise<ActionState> {
+  await requireAdmin();
+  const files = formData.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
+  if (!files.length) return { error: "Choose at least one image." };
+  const kind = (String(formData.get("kind") ?? "GALLERY") as ImageKind) ?? "GALLERY";
+  const alt = String(formData.get("alt") ?? "");
+  let count = await db.productImage.count({ where: { productId } });
+  for (const f of files.slice(0, 10)) {
+    const up = await uploadImage("products", productId, f);
+    if (up.error || !up.url) return { error: up.error ?? "Upload failed." };
+    await db.productImage.create({ data: { productId, url: up.url, path: up.path, alt, kind: count === 0 ? "MAIN" : kind, sortOrder: count++ } });
+  }
+  revalidatePath(`/admin/products/${productId}`);
+  return { ok: true };
+}
+
+export async function deleteProductImage(productId: string, imageId: string) {
+  await requireAdmin();
+  const img = await db.productImage.findFirst({ where: { id: imageId, productId } });
+  if (!img) return;
+  await db.productImage.delete({ where: { id: imageId } });
+  await deleteUpload("products", img.path);
+  revalidatePath(`/admin/products/${productId}`);
+}
+
+export async function reorderImages(productId: string, orderedIds: string[]) {
+  await requireAdmin();
+  await db.$transaction(orderedIds.map((id, i) => db.productImage.update({ where: { id, productId }, data: { sortOrder: i, kind: i === 0 ? "MAIN" : undefined } })));
+  revalidatePath(`/admin/products/${productId}`);
+}
+
+export async function updateImageMeta(productId: string, imageId: string, formData: FormData) {
+  await requireAdmin();
+  await db.productImage.update({ where: { id: imageId, productId }, data: { alt: String(formData.get("alt") ?? ""), kind: String(formData.get("kind") ?? "GALLERY") as ImageKind } });
+  revalidatePath(`/admin/products/${productId}`);
+}
+
 // ---- Bundles ----
 export async function addBundleItem(productId: string, formData: FormData): Promise<ActionState> {
   await requireAdmin();
