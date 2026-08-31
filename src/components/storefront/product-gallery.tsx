@@ -1,10 +1,19 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { useVariantImage } from "./variant-image-context";
 
 export function ProductGallery({ images, name }: { images: { id: string; url: string; alt: string | null; kind: string }[]; name: string }) {
   const [i, setI] = useState(0);
+  const variantImage = useVariantImage();
+
+  useEffect(() => {
+    if (!variantImage?.selectedImageUrl) return;
+    const idx = images.findIndex((img) => img.url === variantImage.selectedImageUrl);
+    if (idx >= 0) setI(idx);
+  }, [images, variantImage?.selectedImageUrl]);
+
   const cur = images[i];
   return (
     <div className="space-y-3">
