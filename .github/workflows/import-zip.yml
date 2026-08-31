@@ -1,0 +1,51 @@
+name: Import MAMAHAIR ZIP
+
+on:
+  push:
+    paths:
+      - 'mamahair-upload.zip'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract uploaded project
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f mamahair-upload.zip
+          rm -rf /tmp/mamahair-import
+          mkdir -p /tmp/mamahair-import
+          unzip -q mamahair-upload.zip -d /tmp/mamahair-import
+
+          # Claude's ZIP may contain a top-level "mamahair" directory.
+          if [ -d /tmp/mamahair-import/mamahair ]; then
+            SOURCE=/tmp/mamahair-import/mamahair
+          else
+            SOURCE=/tmp/mamahair-import
+          fi
+
+          shopt -s dotglob nullglob
+          cp -a "$SOURCE"/* ./
+
+          # Never commit generated/local secrets or caches.
+          rm -rf node_modules .next .vercel
+          rm -f .env .env.local .env.production
+          rm -f mamahair-upload.zip
+
+      - name: Commit imported project
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Import complete MAMAHAIR project from ZIP' || exit 0
+          git push
