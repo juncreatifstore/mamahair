@@ -8,6 +8,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getT } from "@/i18n/server";
 import { AddToCart } from "@/components/storefront/add-to-cart";
 import { ProductGallery } from "@/components/storefront/product-gallery";
+import { VariantImageProvider } from "@/components/storefront/variant-image-context";
 import { ProductCard } from "@/components/storefront/product-card";
 import { WishlistButton } from "@/components/storefront/wishlist-button";
 import { ReviewForm } from "@/components/storefront/review-form";
@@ -53,41 +54,43 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <nav className="text-sm text-ink-soft"><Link href="/shop" className="hover:text-ink">{t.nav.shop}</Link>{p.category && <> / <Link href={`/shop/${p.category.slug}`} className="hover:text-ink">{p.category.name}</Link></>}</nav>
 
-      <div className="mt-5 grid gap-10 md:grid-cols-2">
-        <ProductGallery images={p.images} name={p.name} />
-        <div>
-          <div className="flex flex-wrap gap-2">{p.isNew && <Badge tone="honey">New</Badge>}{p.isBestSeller && <Badge tone="cocoa">Best seller</Badge>}{p.category && <Badge>{p.category.name}</Badge>}</div>
-          <h1 className="mt-3 text-4xl text-cocoa">{p.name}</h1>
-          {p.shortDesc && <p className="mt-3 text-lg text-ink-soft">{p.shortDesc}</p>}
-          {p.ratingCount > 0 && <p className="mt-2 text-sm"><span className="text-flame">{"★".repeat(Math.round(p.ratingAvg ?? 0))}</span> <span className="text-ink-soft">{p.ratingAvg?.toFixed(1)} · {p.ratingCount} {tp.reviews.toLowerCase()}</span></p>}
+      <VariantImageProvider>
+        <div className="mt-5 grid gap-10 md:grid-cols-2">
+          <ProductGallery images={p.images} name={p.name} />
+          <div>
+            <div className="flex flex-wrap gap-2">{p.isNew && <Badge tone="honey">New</Badge>}{p.isBestSeller && <Badge tone="cocoa">Best seller</Badge>}{p.category && <Badge>{p.category.name}</Badge>}</div>
+            <h1 className="mt-3 text-4xl text-cocoa">{p.name}</h1>
+            {p.shortDesc && <p className="mt-3 text-lg text-ink-soft">{p.shortDesc}</p>}
+            {p.ratingCount > 0 && <p className="mt-2 text-sm"><span className="text-flame">{"★".repeat(Math.round(p.ratingAvg ?? 0))}</span> <span className="text-ink-soft">{p.ratingAvg?.toFixed(1)} · {p.ratingCount} {tp.reviews.toLowerCase()}</span></p>}
 
-          <div className="mt-6"><AddToCart variants={p.variants} currency={p.currency} labels={{ add: tp.addToCart, added: tp.added, out: tp.outOfStock, choose: tp.chooseOptions, onlyLeft: tp.onlyLeft }} /></div>
-          <div className="mt-3"><WishlistButton productId={p.id} saved={saved.includes(p.id)} labels={{ save: tp.saveWishlist, saved: tp.savedWishlist }} /></div>
+            <div className="mt-6"><AddToCart variants={p.variants} currency={p.currency} labels={{ add: tp.addToCart, added: tp.added, out: tp.outOfStock, choose: tp.chooseOptions, onlyLeft: tp.onlyLeft }} /></div>
+            <div className="mt-3"><WishlistButton productId={p.id} saved={saved.includes(p.id)} labels={{ save: tp.saveWishlist, saved: tp.savedWishlist }} /></div>
 
-          {features.length > 0 && <div className="mt-6 flex flex-wrap gap-2">{features.map((f) => <Badge key={f} tone="green">✓ {f}</Badge>)}</div>}
-          {(p.hairTypes.length > 0 || p.concerns.length > 0) && <div className="mt-5"><p className="mb-2 text-sm font-semibold">{tp.hairTypes}</p><div className="flex flex-wrap gap-2">{p.hairTypes.map((h) => <Badge key={h} tone="honey">{HAIR_TYPE_LABELS[h]}</Badge>)}{p.concerns.map((c) => <Badge key={c}>{CONCERN_LABELS[c] ?? c}</Badge>)}</div></div>}
+            {features.length > 0 && <div className="mt-6 flex flex-wrap gap-2">{features.map((f) => <Badge key={f} tone="green">✓ {f}</Badge>)}</div>}
+            {(p.hairTypes.length > 0 || p.concerns.length > 0) && <div className="mt-5"><p className="mb-2 text-sm font-semibold">{tp.hairTypes}</p><div className="flex flex-wrap gap-2">{p.hairTypes.map((h) => <Badge key={h} tone="honey">{HAIR_TYPE_LABELS[h]}</Badge>)}{p.concerns.map((c) => <Badge key={c}>{CONCERN_LABELS[c] ?? c}</Badge>)}</div></div>}
 
-          {p.isBundle && p.bundleItems.length > 0 && (
-            <div className="mt-8 rounded-2xl bg-petal p-5">
-              <p className="font-semibold">{tp.includes}</p>
-              <ul className="mt-3 space-y-2 text-sm">{p.bundleItems.map((bi) => <li key={bi.id} className="flex items-center gap-3"><div className="relative size-10 overflow-hidden rounded-lg bg-white">{bi.variant.product.images[0] && <Image src={bi.variant.product.images[0].url} alt="" fill sizes="40px" className="object-cover" />}</div><Link href={`/products/${bi.variant.product.slug}`} className="hover:text-flame">{bi.variant.product.name} · {bi.variant.name}</Link><span className="ml-auto text-ink-soft">× {bi.quantity}</span></li>)}</ul>
-              {p.bundlePriceCents && <p className="mt-3 text-sm text-ink-soft">Set price {formatCents(p.bundlePriceCents, p.currency)} vs {formatCents(p.bundleItems.reduce((s, bi) => s + bi.variant.priceCents * bi.quantity, 0), p.currency)} separately</p>}
-            </div>
-          )}
-
-          {p.description && <div className="mt-8 whitespace-pre-line text-[15px] leading-relaxed">{p.description}</div>}
-
-          <div className="mt-8 divide-y divide-sand border-y border-sand">
-            {specs.some(([, v]) => v) && (
-              <details className="py-4" open><summary className="cursor-pointer list-none font-semibold">{tp.details}</summary>
-                <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5 text-sm">{specs.filter(([, v]) => v).map(([k, v]) => <div key={k} className="contents"><dt className="text-ink-soft">{k}</dt><dd>{v}</dd></div>)}</dl>
-              </details>
+            {p.isBundle && p.bundleItems.length > 0 && (
+              <div className="mt-8 rounded-2xl bg-petal p-5">
+                <p className="font-semibold">{tp.includes}</p>
+                <ul className="mt-3 space-y-2 text-sm">{p.bundleItems.map((bi) => <li key={bi.id} className="flex items-center gap-3"><div className="relative size-10 overflow-hidden rounded-lg bg-white">{bi.variant.product.images[0] && <Image src={bi.variant.product.images[0].url} alt="" fill sizes="40px" className="object-cover" />}</div><Link href={`/products/${bi.variant.product.slug}`} className="hover:text-flame">{bi.variant.product.name} · {bi.variant.name}</Link><span className="ml-auto text-ink-soft">× {bi.quantity}</span></li>)}</ul>
+                {p.bundlePriceCents && <p className="mt-3 text-sm text-ink-soft">Set price {formatCents(p.bundlePriceCents, p.currency)} vs {formatCents(p.bundleItems.reduce((s, bi) => s + bi.variant.priceCents * bi.quantity, 0), p.currency)} separately</p>}
+              </div>
             )}
-            {p.howToUse && <details className="py-4"><summary className="cursor-pointer list-none font-semibold">{tp.howToUse}</summary><p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-ink-soft">{p.howToUse}</p></details>}
-            {p.ingredients && <details className="py-4"><summary className="cursor-pointer list-none font-semibold">{tp.ingredients}</summary><p className="mt-2 text-sm leading-relaxed text-ink-soft">{p.ingredients}</p></details>}
+
+            {p.description && <div className="mt-8 whitespace-pre-line text-[15px] leading-relaxed">{p.description}</div>}
+
+            <div className="mt-8 divide-y divide-sand border-y border-sand">
+              {specs.some(([, v]) => v) && (
+                <details className="py-4" open><summary className="cursor-pointer list-none font-semibold">{tp.details}</summary>
+                  <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5 text-sm">{specs.filter(([, v]) => v).map(([k, v]) => <div key={k} className="contents"><dt className="text-ink-soft">{k}</dt><dd>{v}</dd></div>)}</dl>
+                </details>
+              )}
+              {p.howToUse && <details className="py-4"><summary className="cursor-pointer list-none font-semibold">{tp.howToUse}</summary><p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-ink-soft">{p.howToUse}</p></details>}
+              {p.ingredients && <details className="py-4"><summary className="cursor-pointer list-none font-semibold">{tp.ingredients}</summary><p className="mt-2 text-sm leading-relaxed text-ink-soft">{p.ingredients}</p></details>}
+            </div>
           </div>
         </div>
-      </div>
+      </VariantImageProvider>
 
       <section className="mt-16 grid gap-8 md:grid-cols-[1fr_380px]">
         <div>
