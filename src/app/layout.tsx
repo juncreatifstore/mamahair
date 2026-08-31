@@ -1,6 +1,21 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
+import { Playfair_Display, Poppins } from "next/font/google";
 import "./globals.css";
+
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-playfair",
+  weight: ["400", "500", "600"],
+  display: "swap",
+});
+
+const poppins = Poppins({
+  subsets: ["latin"],
+  variable: "--font-poppins",
+  weight: ["400", "500", "600"],
+  display: "swap",
+});
 
 const FALLBACK_SITE_URL = "https://mamahair.vercel.app";
 const SUPPORTED_LOCALES = new Set(["en", "es", "fr", "ht"]);
@@ -66,7 +81,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   };
 
   return (
-    <html lang={locale}>
+    <html lang={locale} className={`${playfair.variable} ${poppins.variable}`}>
       <body className="min-h-screen">
         <script
           type="application/ld+json"
