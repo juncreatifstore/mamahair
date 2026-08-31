@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+/* ---- Tokens MAMAHAIR ---- */
+@theme {
+  --color-cocoa: #4a1b0c;        /* principale */
+  --color-cocoa-deep: #2e100a;
+  --color-flame: #d85a30;        /* action */
+  --color-flame-deep: #b8461f;
+  --color-petal: #faece7;        /* rose clair */
+  --color-cream: #faf6f1;        /* fond */
+  --color-peach: #f5c4b3;        /* accent */
+  --color-sand: #eadfd6;
+  --color-ink: #2b1a12;
+  --color-ink-soft: #7a6259;
+
+  --font-display: var(--font-playfair), Georgia, serif;
+  --font-body: var(--font-poppins), system-ui, sans-serif;
+  --radius-pill: 999px;
+}
+
+html { color: var(--color-ink); background: var(--color-cream); font-family: var(--font-body); -webkit-font-smoothing: antialiased; }
+h1, h2, h3, .display { font-family: var(--font-display); font-weight: 500; letter-spacing: -0.005em; line-height: 1.08; }
+:focus-visible { outline: 2px solid var(--color-flame); outline-offset: 3px; }
+
+.prose-page h2 { font-family: var(--font-display); font-size: 1.5rem; margin: 2rem 0 0.75rem; color: var(--color-cocoa); }
+.prose-page h3 { font-size: 1.15rem; font-weight: 600; margin: 1.5rem 0 0.5rem; }
+.prose-page p { margin: 0 0 1rem; line-height: 1.75; max-width: 68ch; }
+.prose-page ul { list-style: disc; padding-left: 1.25rem; margin-bottom: 1rem; }
+.prose-page a { color: var(--color-flame); text-decoration: underline; }
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+
+@media print { header, footer, nav, .no-print { display: none !important; } body { background: #fff; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
