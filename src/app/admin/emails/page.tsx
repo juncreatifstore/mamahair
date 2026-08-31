@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { adminSendTestEmail, EMAIL_TEMPLATES, EMAIL_TEMPLATE_LABELS, type EmailTemplate } from "@/server/admin/emails";
+import { adminSendTestEmail } from "@/server/admin/emails";
+import { EMAIL_TEMPLATES, EMAIL_TEMPLATE_LABELS, type EmailTemplate } from "@/lib/admin/email-templates";
 import { PageHeader, Card } from "@/components/admin/ui";
 import { Field, Input, Select } from "@/components/ui/input";
 import { SubmitButton } from "@/components/ui/submit-button";
