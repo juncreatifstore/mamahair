@@ -2,13 +2,13 @@
 
 /* ---- Tokens MAMAHAIR ---- */
 @theme {
-  --color-cocoa: #4a1b0c;        /* principale */
+  --color-cocoa: #4a1b0c;
   --color-cocoa-deep: #2e100a;
-  --color-flame: #d85a30;        /* action */
+  --color-flame: #d85a30;
   --color-flame-deep: #b8461f;
-  --color-petal: #faece7;        /* rose clair */
-  --color-cream: #faf6f1;        /* fond */
-  --color-peach: #f5c4b3;        /* accent */
+  --color-petal: #faece7;
+  --color-cream: #faf6f1;
+  --color-peach: #f5c4b3;
   --color-sand: #eadfd6;
   --color-ink: #2b1a12;
   --color-ink-soft: #7a6259;
@@ -31,9 +31,7 @@ h1, h2, h3, .display { font-family: var(--font-display); font-weight: 500; lette
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }
 
-/* ---- Homepage compact browse controls ----
-   The markup still uses aspect-square utility classes, but these two browse
-   sections should behave like compact premium selectors instead of large tiles. */
+/* ---- Homepage compact browse controls ---- */
 section:has(a[href^="/shop?length="]) {
   padding-top: 1.5rem;
   padding-bottom: 1.5rem;
@@ -95,6 +93,180 @@ section:has(a[href^="/shop?hairType="]) a[href^="/shop?hairType="] span {
 @media (min-width: 640px) {
   section:has(a[href^="/shop?hairType="]) .grid {
     grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+/* ---- Homepage mobile treatment ---- */
+@media (max-width: 639px) {
+  /* Scope all overrides to the storefront homepage. */
+  main:has(a[href="/shop?bestSeller=1"]) > section:first-child > div {
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column;
+  }
+
+  /* Put the image first on phones and keep it compact. */
+  main:has(a[href="/shop?bestSeller=1"]) > section:first-child > div > div:nth-child(1) {
+    order: 2;
+    padding: 1.65rem 1.1rem 2rem !important;
+  }
+
+  main:has(a[href="/shop?bestSeller=1"]) > section:first-child > div > div:nth-child(2) {
+    order: 1;
+    min-height: 20rem !important;
+    height: 20rem;
+  }
+
+  /* Mobile hero uses one strong portrait instead of three narrow strips. */
+  main:has(a[href="/shop?bestSeller=1"]) > section:first-child > div > div:nth-child(2) > div:nth-child(2) {
+    display: block !important;
+  }
+
+  main:has(a[href="/shop?bestSeller=1"]) > section:first-child > div > div:nth-child(2) > div:nth-child(2) > div {
+    display: none;
+    transform: none !important;
+  }
+
+  main:has(a[href="/shop?bestSeller=1"]) > section:first-child > div > div:nth-child(2) > div:nth-child(2) > div:first-child {
+    display: block;
+    position: absolute;
+    inset: 0;
+    background-position: center 18%;
+  }
+
+  /* Remove desktop fade that washes out the mobile portrait. */
+  main:has(a[href="/shop?bestSeller=1"]) > section:first-child > div > div:nth-child(2) > div:first-child {
+    display: none;
+  }
+
+  main:has(a[href="/shop?bestSeller=1"]) > section:first-child h1 {
+    margin-top: 0.8rem !important;
+    font-size: clamp(2.45rem, 12vw, 3.15rem) !important;
+    line-height: 0.98 !important;
+  }
+
+  main:has(a[href="/shop?bestSeller=1"]) > section:first-child h1 + p {
+    margin-top: 1rem !important;
+    font-size: 0.9rem;
+    line-height: 1.65;
+  }
+
+  main:has(a[href="/shop?bestSeller=1"]) > section:first-child a {
+    min-width: 0 !important;
+  }
+
+  /* Trust strip: 2 x 2 instead of four tall rows. */
+  main:has(a[href="/shop?bestSeller=1"]) > section:nth-child(2) {
+    margin-top: 0 !important;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  main:has(a[href="/shop?bestSeller=1"]) > section:nth-child(2) > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-radius: 1rem;
+  }
+
+  main:has(a[href="/shop?bestSeller=1"]) > section:nth-child(2) > div > div {
+    gap: 0.55rem;
+    padding: 0.85rem 0.65rem;
+    border-right: 1px solid var(--color-sand);
+    border-bottom: 1px solid var(--color-sand);
+  }
+
+  main:has(a[href="/shop?bestSeller=1"]) > section:nth-child(2) > div > div:nth-child(even) {
+    border-right: 0;
+  }
+
+  main:has(a[href="/shop?bestSeller=1"]) > section:nth-child(2) > div > div:nth-last-child(-n+2) {
+    border-bottom: 0;
+  }
+
+  main:has(a[href="/shop?bestSeller=1"]) > section:nth-child(2) span[class*="size-10"] {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  main:has(a[href="/shop?bestSeller=1"]) > section:nth-child(2) p {
+    font-size: 0.62rem;
+    line-height: 1.35;
+  }
+
+  /* Category cards should feel like mobile editorial cards, not tall posters. */
+  main:has(a[href="/shop?bestSeller=1"]) > section:nth-child(3) {
+    padding-top: 2.25rem !important;
+    padding-bottom: 2.25rem !important;
+  }
+
+  main:has(a[href="/shop?bestSeller=1"]) > section:nth-child(3) > div:last-child > a {
+    min-height: 13.5rem !important;
+    border-radius: 1rem;
+  }
+
+  main:has(a[href="/shop?bestSeller=1"]) > section:nth-child(3) h3 {
+    font-size: 1.35rem !important;
+  }
+
+  /* Length selector becomes one horizontal row on phones. */
+  main:has(a[href="/shop?bestSeller=1"]) section:has(a[href^="/shop?length="]) div:has(> a[href^="/shop?length="]) {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 0.45rem;
+    overflow-x: auto;
+    padding-bottom: 0.35rem;
+    scrollbar-width: none;
+  }
+
+  main:has(a[href="/shop?bestSeller=1"]) section:has(a[href^="/shop?length="]) div:has(> a[href^="/shop?length="])::-webkit-scrollbar {
+    display: none;
+  }
+
+  main:has(a[href="/shop?bestSeller=1"]) a[href^="/shop?length="] {
+    flex: 0 0 auto;
+    min-width: 3.35rem !important;
+    padding: 0.55rem 0.75rem !important;
+    font-size: 0.78rem !important;
+  }
+
+  /* Hair type avatars stay compact. */
+  main:has(a[href="/shop?bestSeller=1"]) a[href^="/shop?hairType="] {
+    min-height: 0 !important;
+    padding: 0.35rem !important;
+  }
+
+  main:has(a[href="/shop?bestSeller=1"]) a[href^="/shop?hairType="] span:first-child {
+    width: 3.35rem !important;
+    height: 3.35rem !important;
+    min-width: 3.35rem;
+    font-size: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Best sellers/new arrivals: denser mobile spacing. */
+  main:has(a[href="/shop?bestSeller=1"]) section:has(a[href="/shop?bestSeller=1"]),
+  main:has(a[href="/shop?bestSeller=1"]) section:has(a[href="/shop?isNew=1"]) {
+    padding-top: 2.25rem !important;
+    padding-bottom: 2.25rem !important;
+  }
+
+  /* Brand promise image should not consume an entire mobile viewport. */
+  main:has(a[href="/shop?bestSeller=1"]) section.bg-\[\#f4e2d5\] > div > div:first-child {
+    min-height: 19rem !important;
+    background-position: center 18%;
+  }
+
+  main:has(a[href="/shop?bestSeller=1"]) section.bg-\[\#f4e2d5\] > div > div:last-child {
+    padding: 2.25rem 1.25rem !important;
+  }
+
+  main:has(a[href="/shop?bestSeller=1"]) section.bg-\[\#f4e2d5\] h2 {
+    font-size: 2.35rem !important;
+  }
+
+  /* Texture cards are smaller and easier to swipe. */
+  main:has(a[href="/shop?bestSeller=1"]) a[href^="/shop?texture="] {
+    min-width: 8.2rem !important;
+    min-height: 10.5rem !important;
   }
 }
 
