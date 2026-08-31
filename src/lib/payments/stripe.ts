@@ -1,7 +1,14 @@
 import Stripe from "stripe";
 import type { PaymentProvider, CreateCheckoutInput, WebhookOutcome } from "./types";
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "sk_test_missing", { typescript: true });
+let stripeClient: Stripe | null = null;
+
+function getStripe() {
+  const apiKey = process.env.STRIPE_SECRET_KEY?.trim();
+  if (!apiKey) throw new Error("STRIPE_SECRET_KEY is not configured");
+  if (!stripeClient) stripeClient = new Stripe(apiKey, { typescript: true });
+  return stripeClient;
+}
 
 const LOCALES: Record<string, Stripe.Checkout.SessionCreateParams.Locale> = { en: "en", es: "es", fr: "fr", ht: "fr" };
 
@@ -11,11 +18,11 @@ export const stripeProvider: PaymentProvider = {
   async createCheckout(input: CreateCheckoutInput) {
     let couponId: string | undefined;
     if (input.discountCents > 0) {
-      const coupon = await stripe.coupons.create({ amount_off: input.discountCents, currency: input.currency.toLowerCase(), duration: "once", name: input.discountLabel ?? "Discount" });
+      const coupon = await getStripe().coupons.create({ amount_off: input.discountCents, currency: input.currency.toLowerCase(), duration: "once", name: input.discountLabel ?? "Discount" });
       couponId = coupon.id;
     }
     // Client Stripe avec l'adresse déjà saisie : évite la double saisie et alimente Stripe Tax.
-    const customer = await stripe.customers.create({
+    const customer = await getStripe().customers.create({
       email: input.email,
       name: input.address.fullName,
       phone: input.address.phone || undefined,
@@ -24,7 +31,7 @@ export const stripeProvider: PaymentProvider = {
       metadata: { orderId: input.orderId },
     });
 
-    const session = await stripe.checkout.sessions.create({
+    const session = await getStripe().checkout.sessions.create({
       mode: "payment",
       customer: customer.id,
       customer_update: input.automaticTax ? { shipping: "auto", address: "auto" } : undefined,
@@ -66,7 +73,7 @@ export const stripeProvider: PaymentProvider = {
   async parseWebhook(rawBody, headers) {
     const sig = headers.get("stripe-signature");
     if (!sig || !process.env.STRIPE_WEBHOOK_SECRET) throw new Error("Missing Stripe signature or webhook secret");
-    const event = stripe.webhooks.constructEvent(rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    const event = getStripe().webhooks.constructEvent(rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET);
     let outcome: WebhookOutcome = { kind: "ignored" };
 
     if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
@@ -96,14 +103,14 @@ export const stripeProvider: PaymentProvider = {
   },
 
   async refund(intentId, amountCents) {
-    const r = await stripe.refunds.create({ payment_intent: intentId, ...(amountCents ? { amount: amountCents } : {}) });
+    const r = await getStripe().refunds.create({ payment_intent: intentId, ...(amountCents ? { amount: amountCents } : {}) });
     return { refundId: r.id };
   },
 
   async cancelCheckout(providerId) {
     try {
-      const s = await stripe.checkout.sessions.retrieve(providerId);
-      if (s.status === "open") await stripe.checkout.sessions.expire(providerId);
+      const s = await getStripe().checkout.sessions.retrieve(providerId);
+      if (s.status === "open") await getStripe().checkout.sessions.expire(providerId);
     } catch {
       /* session inexistante ou déjà fermée : rien à faire */
     }
