@@ -14,7 +14,19 @@ import { checkoutSchema } from "@/schemas/checkout";
 import { getLocale } from "@/i18n/server";
 import { getCart, cartTotals } from "./cart";
 
-const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+const FALLBACK_SITE = "https://mamahair.vercel.app";
+function getSiteUrl() {
+  const raw = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (!raw) return FALLBACK_SITE;
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return FALLBACK_SITE;
+    return url.origin;
+  } catch {
+    return FALLBACK_SITE;
+  }
+}
+const SITE = getSiteUrl();
 
 export type CheckoutState = { error?: string; fieldErrors?: Record<string, string[]> };
 
@@ -64,7 +76,6 @@ export async function startCheckout(_prev: CheckoutState, formData: FormData): P
   const rate = rates.find((r) => r.id === shippingRateId);
   if (!rate) return { error: "Choose a valid delivery method." };
 
-  // Remise : re-validée ici avec l'email (usesPerCustomer) — la validation du panier est indicative.
   let discountCents = 0, freeShipping = false, discountCode: string | null = null;
   if (cart.discount) {
     const v = await validateDiscount(cart.discount.code, { currency, subtotalCents: totals.subtotalCents, lines: totals.lines, userId: user?.id, email });
@@ -72,11 +83,9 @@ export async function startCheckout(_prev: CheckoutState, formData: FormData): P
     discountCents = v.discountCents; freeShipping = v.freeShipping; discountCode = v.discount.code;
   }
   const shippingCents = freeShipping ? 0 : computeShippingCents(rate, totals.subtotalCents - discountCents, currency);
-  const totalCents = totals.subtotalCents - discountCents + shippingCents; // taxe ajoutée par Stripe Tax (montant final = webhook)
-  // Stripe impose 30 min ≤ expires_at ≤ 24 h ; la commande expire au même instant que la session.
+  const totalCents = totals.subtotalCents - discountCents + shippingCents;
   const expiresAt = new Date(Date.now() + Math.min(1440, Math.max(30, commerce.reservationMinutes)) * 60_000);
 
-  // ---- 2. Transaction : commande + réservation atomique ----
   let orderId: string;
   try {
     orderId = await db.$transaction(async (tx) => {
@@ -97,7 +106,7 @@ export async function startCheckout(_prev: CheckoutState, formData: FormData): P
         },
       });
       for (const i of items) {
-        await reserveStock(tx, i.variantId, i.quantity); // lève InsufficientStockError → rollback complet
+        await reserveStock(tx, i.variantId, i.quantity);
         await tx.stockReservation.create({ data: { orderId: order.id, variantId: i.variantId, quantity: i.quantity, expiresAt } });
       }
       return order.id;
@@ -111,14 +120,12 @@ export async function startCheckout(_prev: CheckoutState, formData: FormData): P
     return { error: "We couldn't start your order. Please try again." };
   }
 
-  // Carnet d'adresses (optionnel) + email sur le panier (relance)
   if (user && saveAddress) {
     const exists = await db.address.findFirst({ where: { userId: user.id, line1: address.line1, postalCode: address.postalCode || null, country: address.country } });
     if (!exists) await db.address.create({ data: { ...address, line2: address.line2 || null, region: address.region || null, postalCode: address.postalCode || null, phone: address.phone || null, userId: user.id } });
   }
   await db.cart.update({ where: { id: cart.id }, data: { email, lastActivityAt: new Date() } });
 
-  // ---- 3. Session de paiement (hors transaction) avec rollback ----
   let redirectUrl: string;
   try {
     const provider = getPaymentProvider("STRIPE");
@@ -143,7 +150,7 @@ export async function startCheckout(_prev: CheckoutState, formData: FormData): P
         await tx.payment.update({ where: { orderId }, data: { status: "FAILED" } });
       });
     } catch (rollbackErr) {
-      await logger.error("checkout.rollback_failed", rollbackErr, { orderId }); // le cron d'expiration reprendra la main
+      await logger.error("checkout.rollback_failed", rollbackErr, { orderId });
     }
     return { error: "Payment could not be started. Your cart is intact, please try again." };
   }
