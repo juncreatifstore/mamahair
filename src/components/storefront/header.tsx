@@ -19,6 +19,7 @@ export async function Header() {
     ...categories.filter((c) => c.showOnHome).slice(0, 6).map((c) => ({ href: `/shop/${c.slug}`, label: c.name })),
     { href: "/shop?isNew=1", label: t.nav.newArrivals },
     { href: "/quiz", label: t.nav.quiz },
+    { href: "/blog", label: "Blog" },
   ];
 
   return (
