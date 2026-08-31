@@ -13,6 +13,7 @@ import { MobileMenu } from "./mobile-menu";
 export async function Header() {
   const [user, cart, b, t, locale, currency, categories] = await Promise.all([getCurrentUser(), getCart(), getBrand(), getT(), getLocale(), getCurrency(), listCategories()]);
   const { count } = await cartTotals(cart);
+  const headerLogo = b.branding.logoDarkUrl || b.branding.logoUrl;
   const nav = [
     { href: "/shop", label: t.nav.shop },
     ...categories.filter((c) => c.showOnHome).slice(0, 6).map((c) => ({ href: `/shop/${c.slug}`, label: c.name })),
@@ -29,7 +30,7 @@ export async function Header() {
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6">
           <MobileMenu nav={nav} label={t.nav.menu} />
           <Link href="/" className="flex items-center" aria-label={b.storeName}>
-            {b.branding.logoUrl ? <Image src={b.branding.logoUrl} alt={b.storeName} width={140} height={40} className="h-9 w-auto" priority /> : <span className="display text-2xl tracking-wide text-cocoa">{b.storeName}</span>}
+            {headerLogo ? <Image src={headerLogo} alt={b.storeName} width={160} height={48} className="h-9 w-auto object-contain" priority /> : <span className="display text-2xl tracking-wide text-cocoa">{b.storeName}</span>}
           </Link>
           <nav className="ml-6 hidden items-center gap-6 text-sm font-medium lg:flex">
             {nav.map((n) => <Link key={n.href} href={n.href} className="hover:text-flame">{n.label}</Link>)}
