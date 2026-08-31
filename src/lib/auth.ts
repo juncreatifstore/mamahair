@@ -6,24 +6,41 @@ import { createSupabaseServer } from "./supabase/server";
 /**
  * Récupère l'utilisateur courant. Synchronise la table User avec Supabase Auth
  * à la première connexion (id = uid Supabase).
+ *
+ * Les pages publiques ne doivent jamais tomber en 500 si Supabase Auth n'est
+ * pas encore configuré dans l'environnement Vercel : dans ce cas on traite la
+ * requête comme une session invitée et on retourne null.
  */
 export const getCurrentUser = cache(async () => {
-  const supabase = await createSupabaseServer();
-  const { data } = await supabase.auth.getUser();
-  const authUser = data.user;
-  if (!authUser?.email) return null;
+  try {
+    const supabase = await createSupabaseServer();
+    const { data, error } = await supabase.auth.getUser();
+    if (error) return null;
 
-  const existing = await db.user.findUnique({ where: { email: authUser.email } });
-  if (existing) return existing;
+    const authUser = data.user;
+    if (!authUser?.email) return null;
 
-  return db.user.create({
-    data: {
-      id: authUser.id,
-      email: authUser.email,
-      firstName: (authUser.user_metadata?.first_name as string) ?? null,
-      lastName: (authUser.user_metadata?.last_name as string) ?? null,
-    },
-  });
+    const existing = await db.user.findUnique({ where: { email: authUser.email } });
+    if (existing) return existing;
+
+    return db.user.create({
+      data: {
+        id: authUser.id,
+        email: authUser.email,
+        firstName: (authUser.user_metadata?.first_name as string) ?? null,
+        lastName: (authUser.user_metadata?.last_name as string) ?? null,
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (
+      message.includes("Supabase server configuration is missing") ||
+      message.includes("project's URL and Key are required")
+    ) {
+      return null;
+    }
+    throw error;
+  }
 });
 
 export async function requireUser(next = "/account") {
