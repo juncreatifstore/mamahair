@@ -31,7 +31,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       db.product.findMany({ where: { status: "ACTIVE" }, select: { slug: true, updatedAt: true } }),
       db.category.findMany({ where: { isActive: true }, select: { slug: true } }),
       db.page.findMany({ where: { isActive: true, locale: "en" }, select: { slug: true, updatedAt: true } }),
-      db.post.findMany({ where: { status: "PUBLISHED", locale: "en" }, select: { slug: true, updatedAt: true } }),
+      db.post.findMany({ where: { publishedAt: { not: null }, locale: "en" }, select: { slug: true, updatedAt: true } }),
     ]);
 
     return [
