@@ -38,12 +38,37 @@ const ALLOWED: Record<OrderStatus, OrderStatus[]> = {
   PARTIALLY_REFUNDED: ["PROCESSING", "READY_TO_SHIP", "SHIPPED", "DELIVERED"],
 };
 
+function shipmentFields(formData: FormData) {
+  return {
+    carrier: String(formData.get("carrier") ?? "").trim(),
+    trackingNumber: String(formData.get("trackingNumber") ?? "").trim(),
+    trackingUrl: String(formData.get("trackingUrl") ?? "").trim(),
+  };
+}
+
+function validTrackingUrl(value: string) {
+  if (!value) return true;
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export async function updateOrderStatus(id: string, formData: FormData): Promise<{ error?: string; ok?: boolean }> {
   const admin = await requireAdmin();
   const status = String(formData.get("status")) as OrderStatus;
   const current = await db.order.findUnique({ where: { id }, include: { items: true, payment: true } });
   if (!current) return { error: "Order not found." };
   if (!ALLOWED[current.status]?.includes(status)) return { error: `Cannot move from ${current.status} to ${status}.` };
+
+  const shipping = shipmentFields(formData);
+  if (status === "SHIPPED") {
+    if (!shipping.carrier) return { error: "Carrier is required before marking an order as shipped." };
+    if (!shipping.trackingNumber) return { error: "Tracking number is required before marking an order as shipped." };
+    if (!validTrackingUrl(shipping.trackingUrl)) return { error: "Tracking URL must be a valid http or https URL." };
+  }
 
   const note = String(formData.get("note") ?? "") || null;
   let order: Prisma.OrderGetPayload<{ include: { items: true } }>;
@@ -68,8 +93,8 @@ export async function updateOrderStatus(id: string, formData: FormData): Promise
   if (status === "SHIPPED") {
     const shipment = await db.shipment.upsert({
       where: { orderId: id },
-      update: { carrier: String(formData.get("carrier") ?? "") || null, trackingNumber: String(formData.get("trackingNumber") ?? "") || null, trackingUrl: String(formData.get("trackingUrl") ?? "") || null, shippedAt: new Date() },
-      create: { orderId: id, carrier: String(formData.get("carrier") ?? "") || null, trackingNumber: String(formData.get("trackingNumber") ?? "") || null, trackingUrl: String(formData.get("trackingUrl") ?? "") || null, shippedAt: new Date() },
+      update: { carrier: shipping.carrier, trackingNumber: shipping.trackingNumber, trackingUrl: shipping.trackingUrl || null, shippedAt: new Date() },
+      create: { orderId: id, carrier: shipping.carrier, trackingNumber: shipping.trackingNumber, trackingUrl: shipping.trackingUrl || null, shippedAt: new Date() },
     });
     await sendOrderShipped({ ...order, ...shipment });
   }
