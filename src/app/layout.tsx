@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import "./globals.css";
 
 const FALLBACK_SITE_URL = "https://mamahair.vercel.app";
+const SUPPORTED_LOCALES = new Set(["en", "es", "fr", "ht"]);
 
 function getSiteUrl() {
   const raw = process.env.NEXT_PUBLIC_SITE_URL?.trim();
@@ -27,6 +29,10 @@ export const metadata: Metadata = {
     "Premium human hair wigs, bundles, closures, frontals and hair care for textured hair.",
   applicationName: "MAMAHAIR",
   alternates: { canonical: "/" },
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+  },
   openGraph: {
     type: "website",
     url: "/",
@@ -47,7 +53,11 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const cookieStore = await cookies();
+  const requestedLocale = cookieStore.get("locale")?.value?.toLowerCase();
+  const locale = requestedLocale && SUPPORTED_LOCALES.has(requestedLocale) ? requestedLocale : "en";
+
   const organizationLd = {
     "@context": "https://schema.org",
     "@type": "Organization",
@@ -56,7 +66,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   };
 
   return (
-    <html lang="en">
+    <html lang={locale}>
       <body className="min-h-screen">
         <script
           type="application/ld+json"
