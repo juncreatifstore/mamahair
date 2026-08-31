@@ -1,0 +1,663 @@
+// ============================================================
+//  MAMAHAIR.COM — Schéma Prisma (PostgreSQL / Supabase)
+//  Perruques, bundles, extensions, closures, frontals, soins.
+//  International-ready : centimes + devise partout, zones/taxes
+//  en base, traductions, pays et devises activés en paramètres.
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ------------------------------------------------------------
+//  UTILISATEURS
+// ------------------------------------------------------------
+
+enum Role {
+  CLIENT
+  STAFF
+  ADMIN
+}
+
+model User {
+  id          String         @id @default(uuid())
+  email       String         @unique
+  firstName   String?
+  lastName    String?
+  phone       String?
+  role        Role           @default(CLIENT)
+  locale      String         @default("en")
+  currency    String         @default("USD")
+  notes       String? // notes internes (admin)
+  isBlocked   Boolean        @default(false)
+  hairProfile HairProfile?
+  addresses   Address[]
+  orders      Order[]
+  cart        Cart?
+  reviews     Review[]
+  wishlist    WishlistItem[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model HairProfile {
+  id        String    @id @default(uuid())
+  userId    String    @unique
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hairType  HairType?
+  porosity  Porosity?
+  concerns  String[]
+  /// Réponses du quiz "Find Your Perfect Hair"
+  quiz      Json?
+  updatedAt DateTime  @updatedAt
+}
+
+enum HairType {
+  T3A
+  T3B
+  T3C
+  T4A
+  T4B
+  T4C
+}
+
+enum Porosity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model Address {
+  id         String   @id @default(uuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName   String
+  line1      String
+  line2      String?
+  city       String
+  region     String?
+  postalCode String?
+  country    String // ISO 3166-1 alpha-2
+  phone      String?
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ------------------------------------------------------------
+//  CATALOGUE
+// ------------------------------------------------------------
+
+model Category {
+  id           String                @id @default(uuid())
+  slug         String                @unique
+  name         String
+  description  String?
+  imageUrl     String?
+  parentId     String?
+  parent       Category?             @relation("CategoryTree", fields: [parentId], references: [id])
+  children     Category[]            @relation("CategoryTree")
+  products     Product[]
+  translations CategoryTranslation[]
+  discounts    Discount[]            @relation("DiscountCategories")
+  sortOrder    Int                   @default(0)
+  isActive     Boolean               @default(true)
+  showOnHome   Boolean               @default(true)
+}
+
+model CategoryTranslation {
+  id          String   @id @default(uuid())
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  locale      String
+  name        String
+  description String?
+
+  @@unique([categoryId, locale])
+}
+
+/// Type de produit : pilote les attributs affichés et les filtres.
+enum ProductType {
+  WIG
+  BUNDLE
+  EXTENSION
+  CLOSURE
+  FRONTAL
+  HAIR_CARE
+  ACCESSORY
+  KIT // bundle/routine composé (utilise BundleItem)
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+model Product {
+  id          String        @id @default(uuid())
+  slug        String        @unique
+  sku         String?       @unique
+  name        String
+  shortDesc   String?
+  description String?
+  ingredients String?
+  howToUse    String?
+  brand       String?
+  productType ProductType   @default(HAIR_CARE)
+  status      ProductStatus @default(ACTIVE)
+  categoryId  String?
+  category    Category?     @relation(fields: [categoryId], references: [id])
+
+  // ---- Attributs soins (existants) ----
+  hairTypes  HairType[]
+  concerns   String[]
+  porosities Porosity[]
+
+  // ---- Attributs cheveux / perruques (filtrables) ----
+  hairMaterial    String? // Human Hair, Remy Human Hair, Virgin Hair, Synthetic
+  hairOrigin      String? // Brazilian, Peruvian, Indian, Malaysian
+  textures        String[] // Straight, Body Wave, Deep Wave…
+  lengths         Int[] // pouces : 8..40
+  densities       String[] // 130%, 150%…
+  laceTypes       String[] // 4x4, 13x4, HD Lace…
+  colors          String[] // Natural Black, 1B, 613…
+  capSize         String? // S / M / L
+  wigType         String? // Lace Front, Full Lace, Headband, U-Part…
+  closureType     String?
+  parting         String? // Free part, Middle part…
+  hairGrade       String? // 10A, 12A…
+  bundlesCount    Int?
+  canBleach       Boolean?
+  canDye          Boolean?
+  heatSafe        Boolean?
+  prePlucked      Boolean?
+  babyHair        Boolean?
+  glueless        Boolean?
+  adjustableStrap Boolean?
+  /// Attributs libres pour les futurs types de produits : { "label": "value" }
+  attributes      Json?
+
+  // ---- Prix / commerce ----
+  basePriceCents   Int
+  compareAtCents   Int?
+  costCents        Int?
+  currency         String  @default("USD")
+  weightGrams      Int?
+  isFeatured       Boolean @default(false)
+  isBestSeller     Boolean @default(false)
+  isNew            Boolean @default(false)
+  /// Produit composé (Wig + Care Kit, 3 Bundles + Closure…) : voir BundleItem
+  isBundle         Boolean @default(false)
+  /// Prix spécial du pack (sinon somme des composants)
+  bundlePriceCents Int?
+  seoTitle         String?
+  seoDescription   String?
+
+  images        ProductImage[]
+  variants      ProductVariant[]
+  translations  ProductTranslation[]
+  reviews       Review[]
+  bundleItems   BundleItem[]         @relation("BundleContains")
+  wishlistItems WishlistItem[]
+  discounts     Discount[]           @relation("DiscountProducts")
+  salesCount    Int                  @default(0)
+  ratingAvg     Float?
+  ratingCount   Int                  @default(0)
+  publishedAt   DateTime?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@index([categoryId])
+  @@index([status, isFeatured])
+  @@index([status, productType])
+  @@index([status, isBestSeller])
+  @@index([status, isNew])
+}
+
+model ProductTranslation {
+  id          String  @id @default(uuid())
+  productId   String
+  product     Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  locale      String
+  name        String
+  shortDesc   String?
+  description String?
+  ingredients String?
+  howToUse    String?
+
+  @@unique([productId, locale])
+}
+
+enum ImageKind {
+  MAIN
+  GALLERY
+  VARIANT
+  WORN
+  LACE_DETAIL
+  TEXTURE
+  PACKAGING
+}
+
+model ProductImage {
+  id        String           @id @default(uuid())
+  productId String
+  product   Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  path      String? // chemin dans le bucket (pour suppression)
+  alt       String?
+  kind      ImageKind        @default(GALLERY)
+  sortOrder Int              @default(0)
+  variants  ProductVariant[]
+
+  @@index([productId, sortOrder])
+}
+
+/// Variante = combinaison d'options (texture + longueur + couleur + densité + lace…)
+model ProductVariant {
+  id             String             @id @default(uuid())
+  productId      String
+  product        Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sku            String             @unique
+  name           String // libellé lisible : "Body Wave · 24" · 180% · 13x4 · Natural Black"
+  /// Options structurées : { "texture": "Body Wave", "length": "24", "density": "180%", "lace": "13x4", "color": "Natural Black" }
+  options        Json?
+  priceCents     Int
+  compareAtCents Int?
+  costCents      Int?
+  weightGrams    Int?
+  imageId        String?
+  image          ProductImage?      @relation(fields: [imageId], references: [id], onDelete: SetNull)
+  isDefault      Boolean            @default(false)
+  isActive       Boolean            @default(true)
+  inventory      Inventory?
+  cartItems      CartItem[]
+  orderItems     OrderItem[]
+  reservations   StockReservation[]
+  bundleItems    BundleItem[]       @relation("BundleVariant")
+  wishlistItems  WishlistItem[]
+
+  @@index([productId])
+}
+
+model Inventory {
+  id         String         @id @default(uuid())
+  variantId  String         @unique
+  variant    ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  quantity   Int            @default(0)
+  reserved   Int            @default(0)
+  lowStockAt Int            @default(5)
+  updatedAt  DateTime       @updatedAt
+}
+
+/// Réservation de stock liée à une commande en attente de paiement.
+/// Libérée par le webhook (expired), l'échec Stripe (rollback) ou le cron d'expiration.
+model StockReservation {
+  id          String         @id @default(uuid())
+  orderId     String
+  order       Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variantId   String
+  variant     ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  quantity    Int
+  expiresAt   DateTime
+  releasedAt  DateTime?
+  committedAt DateTime?
+  createdAt   DateTime       @default(now())
+
+  @@index([expiresAt, releasedAt, committedAt])
+  @@index([orderId])
+}
+
+model BundleItem {
+  id        String         @id @default(uuid())
+  bundleId  String
+  bundle    Product        @relation("BundleContains", fields: [bundleId], references: [id], onDelete: Cascade)
+  variantId String
+  variant   ProductVariant @relation("BundleVariant", fields: [variantId], references: [id], onDelete: Cascade)
+  quantity  Int            @default(1)
+
+  @@unique([bundleId, variantId])
+}
+
+// ------------------------------------------------------------
+//  WISHLIST
+// ------------------------------------------------------------
+
+model WishlistItem {
+  id        String          @id @default(uuid())
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variantId String?
+  variant   ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  createdAt DateTime        @default(now())
+
+  @@unique([userId, productId])
+  @@index([productId])
+}
+
+// ------------------------------------------------------------
+//  PANIER
+// ------------------------------------------------------------
+
+model Cart {
+  id                  String     @id @default(uuid())
+  userId              String?    @unique
+  user                User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId           String?    @unique
+  email               String? // capturé au checkout : permet la relance de panier abandonné
+  currency            String     @default("USD")
+  items               CartItem[]
+  discountId          String?
+  discount            Discount?  @relation(fields: [discountId], references: [id], onDelete: SetNull)
+  /// Suivi panier abandonné
+  lastActivityAt      DateTime   @default(now())
+  recoveryEmailSentAt DateTime?
+  convertedAt         DateTime?
+  updatedAt           DateTime   @updatedAt
+  createdAt           DateTime   @default(now())
+
+  @@index([lastActivityAt, convertedAt])
+}
+
+model CartItem {
+  id        String         @id @default(uuid())
+  cartId    String
+  cart      Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  quantity  Int
+
+  @@unique([cartId, variantId])
+}
+
+// ------------------------------------------------------------
+//  COMMANDES & PAIEMENTS
+// ------------------------------------------------------------
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  PROCESSING
+  READY_TO_SHIP
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+model Order {
+  id              String               @id @default(uuid())
+  number          Int                  @unique @default(autoincrement())
+  userId          String?
+  user            User?                @relation(fields: [userId], references: [id])
+  email           String
+  phone           String?
+  status          OrderStatus          @default(PENDING_PAYMENT)
+  currency        String
+  subtotalCents   Int
+  discountCents   Int                  @default(0)
+  shippingCents   Int                  @default(0)
+  taxCents        Int                  @default(0)
+  totalCents      Int
+  refundedCents   Int                  @default(0)
+  discountCode    String?
+  shippingAddress Json
+  billingAddress  Json?
+  shippingRateId  String?
+  shippingRate    ShippingRate?        @relation(fields: [shippingRateId], references: [id])
+  items           OrderItem[]
+  payment         Payment?
+  shipment        Shipment?
+  reservations    StockReservation[]
+  history         OrderStatusHistory[]
+  notes           String? // note client
+  internalNotes   String? // notes admin
+  locale          String               @default("en")
+  /// Expiration de la réservation de stock pour les commandes PENDING_PAYMENT
+  expiresAt       DateTime?
+  paidAt          DateTime?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([email])
+}
+
+model OrderItem {
+  id          String         @id @default(uuid())
+  orderId     String
+  order       Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variantId   String
+  variant     ProductVariant @relation(fields: [variantId], references: [id])
+  productName String
+  variantName String
+  sku         String
+  options     Json?
+  imageUrl    String?
+  unitCents   Int
+  quantity    Int
+  totalCents  Int
+}
+
+model OrderStatusHistory {
+  id        String      @id @default(uuid())
+  orderId   String
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status    OrderStatus
+  note      String?
+  actor     String? // "system", "webhook", email admin…
+  createdAt DateTime    @default(now())
+
+  @@index([orderId, createdAt])
+}
+
+enum PaymentProvider {
+  STRIPE
+  MERCADO_PAGO
+  PAYPAL
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+model Payment {
+  id            String          @id @default(uuid())
+  orderId       String          @unique
+  order         Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider      PaymentProvider @default(STRIPE)
+  providerId    String?         @unique // session / preference id
+  intentId      String? // payment_intent id (Stripe)
+  status        PaymentStatus   @default(PENDING)
+  amountCents   Int
+  currency      String
+  refundedCents Int             @default(0)
+  method        String? // card, oxxo, spei, apple_pay…
+  rawResponse   Json?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
+/// Idempotence des webhooks (Stripe, Mercado Pago…)
+model WebhookEvent {
+  id          String          @id // event id du fournisseur
+  provider    PaymentProvider
+  type        String
+  processedAt DateTime        @default(now())
+}
+
+model Shipment {
+  id             String    @id @default(uuid())
+  orderId        String    @unique
+  order          Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  carrier        String?
+  trackingNumber String?
+  trackingUrl    String?
+  labelUrl       String? // Shippo / EasyPost (futur)
+  shippedAt      DateTime?
+  deliveredAt    DateTime?
+}
+
+// ------------------------------------------------------------
+//  LIVRAISON & TAXES
+// ------------------------------------------------------------
+
+model ShippingZone {
+  id        String         @id @default(uuid())
+  name      String
+  countries String[]
+  isActive  Boolean        @default(true)
+  sortOrder Int            @default(0)
+  rates     ShippingRate[]
+  taxRates  TaxRate[]
+}
+
+model ShippingRate {
+  id             String       @id @default(uuid())
+  zoneId         String
+  zone           ShippingZone @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  name           String
+  priceCents     Int
+  currency       String       @default("USD")
+  freeAboveCents Int?
+  minWeightGrams Int?
+  maxWeightGrams Int?
+  minDays        Int?
+  maxDays        Int?
+  isActive       Boolean      @default(true)
+  orders         Order[]
+}
+
+model TaxRate {
+  id       String       @id @default(uuid())
+  zoneId   String
+  zone     ShippingZone @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  region   String?
+  name     String
+  rateBps  Int
+  isActive Boolean      @default(true)
+}
+
+// ------------------------------------------------------------
+//  PROMOTIONS
+// ------------------------------------------------------------
+
+enum DiscountType {
+  PERCENT
+  FIXED
+  FREE_SHIPPING
+}
+
+model Discount {
+  id              String       @id @default(uuid())
+  code            String       @unique
+  type            DiscountType
+  value           Int // % ou centimes
+  /// Obligatoire pour FIXED et pour minOrderCents : une remise fixe a une devise.
+  currency        String?
+  minOrderCents   Int?
+  maxUses         Int?
+  usesPerCustomer Int?
+  usedCount       Int          @default(0)
+  startsAt        DateTime?
+  endsAt          DateTime?
+  isActive        Boolean      @default(true)
+  categories      Category[]   @relation("DiscountCategories")
+  products        Product[]    @relation("DiscountProducts")
+  carts           Cart[]
+}
+
+// ------------------------------------------------------------
+//  AVIS, CONTENU, PARAMÈTRES
+// ------------------------------------------------------------
+
+model Review {
+  id                 String   @id @default(uuid())
+  productId          String
+  product            Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating             Int
+  title              String?
+  body               String?
+  photoUrls          String[]
+  isVerifiedPurchase Boolean  @default(false)
+  isApproved         Boolean  @default(false)
+  createdAt          DateTime @default(now())
+
+  @@unique([productId, userId])
+  @@index([productId, isApproved])
+}
+
+/// Pages : même slug logique par langue (/pages/about en en, fr, es, ht)
+model Page {
+  id             String   @id @default(uuid())
+  slug           String
+  locale         String   @default("en")
+  title          String
+  content        String
+  seoTitle       String?
+  seoDescription String?
+  isActive       Boolean  @default(true)
+  updatedAt      DateTime @updatedAt
+
+  @@unique([slug, locale])
+}
+
+model Post {
+  id          String    @id @default(uuid())
+  slug        String
+  locale      String    @default("en")
+  title       String
+  excerpt     String?
+  content     String
+  coverUrl    String?
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([slug, locale])
+}
+
+/// Blocs éditables de la page d'accueil (hero, bannières promo, témoignages…)
+model HomeBlock {
+  id        String   @id @default(uuid())
+  key       String // hero, announcement, banner_1, banner_2, testimonials, why…
+  locale    String   @default("en")
+  data      Json
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@unique([key, locale])
+}
+
+model NewsletterSubscriber {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  locale    String   @default("en")
+  source    String?
+  createdAt DateTime @default(now())
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
