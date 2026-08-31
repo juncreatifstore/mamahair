@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { formatCents } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { OPTION_KEYS, OPTION_LABELS, type OptionKey } from "@/lib/catalog";
+import { useVariantImage } from "./variant-image-context";
 
 type V = { id: string; name: string; sku: string; priceCents: number; compareAtCents: number | null; isDefault: boolean; options: unknown; inventory: { quantity: number; reserved: number } | null; image: { url: string } | null };
 
@@ -19,16 +20,19 @@ export function AddToCart({ variants, currency, labels, onVariantChange }: { var
   const [msg, setMsg] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const router = useRouter();
+  const variantImage = useVariantImage();
 
   const match = axes.length === 0 ? initial : variants.find((v) => axes.every((a) => opts(v)[a.key] === sel[a.key]));
   const available = match ? Math.max(0, (match.inventory?.quantity ?? 0) - (match.inventory?.reserved ?? 0)) : 0;
   const pick = (key: OptionKey, value: string) => {
     const next = { ...sel, [key]: value };
-    // Si la combinaison n'existe pas, on prend la première variante compatible avec cette valeur.
     if (!variants.some((v) => axes.every((a) => opts(v)[a.key] === next[a.key]))) { const first = variants.find((v) => opts(v)[key] === value); if (first) Object.assign(next, opts(first)); }
     setSel(next); setMsg(null);
     const nv = variants.find((v) => axes.every((a) => opts(v)[a.key] === next[a.key]));
-    if (nv) onVariantChange?.(nv);
+    if (nv) {
+      variantImage?.setSelectedImageUrl(nv.image?.url ?? null);
+      onVariantChange?.(nv);
+    }
   };
   const isAvailable = (key: OptionKey, value: string) => variants.some((v) => opts(v)[key] === value && (v.inventory?.quantity ?? 0) - (v.inventory?.reserved ?? 0) > 0);
 
@@ -37,9 +41,9 @@ export function AddToCart({ variants, currency, labels, onVariantChange }: { var
       {axes.length > 0 && <p className="text-sm font-medium">{labels.choose}</p>}
       {axes.map((a) => (
         <div key={a.key}>
-          <p className="mb-2 text-xs text-ink-soft">{OPTION_LABELS[a.key]}: <span className="font-medium text-ink">{a.key === "length" ? `${sel[a.key]}"` : sel[a.key]}</span></p>
+          <p className="mb-2 text-xs text-ink-soft">{OPTION_LABELS[a.key]}: <span className="font-medium text-ink">{a.key === "length" ? `${sel[a.key]}\"` : sel[a.key]}</span></p>
           <div className="flex flex-wrap gap-2">
-            {a.values.map((v) => <button key={v} onClick={() => pick(a.key, v)} className={cn("rounded-pill border px-4 py-2 text-sm", sel[a.key] === v ? "border-cocoa bg-cocoa text-cream" : "border-sand bg-white hover:border-cocoa/50", !isAvailable(a.key, v) && "opacity-50 line-through")}>{a.key === "length" ? `${v}"` : v}</button>)}
+            {a.values.map((v) => <button key={v} onClick={() => pick(a.key, v)} className={cn("rounded-pill border px-4 py-2 text-sm", sel[a.key] === v ? "border-cocoa bg-cocoa text-cream" : "border-sand bg-white hover:border-cocoa/50", !isAvailable(a.key, v) && "opacity-50 line-through")}>{a.key === "length" ? `${v}\"` : v}</button>)}
           </div>
         </div>
       ))}
