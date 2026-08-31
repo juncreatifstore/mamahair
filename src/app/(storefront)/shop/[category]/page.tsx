@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { listProducts, listCategories, getCategoryBySlug, type ProductFilters } from "@/server/products";
 import { ShopLayout } from "@/components/storefront/shop-layout";
@@ -13,7 +14,40 @@ export default async function CategoryPage({ params, searchParams }: { params: P
   return <ShopLayout title={cat.name} description={cat.description} result={result} categories={categories} basePath={`/shop/${category}`} query={sp} />;
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ category: string }> }) {
-  const cat = await getCategoryBySlug((await params).category);
-  return { title: cat?.name ?? "Shop", description: cat?.description ?? undefined };
+export async function generateMetadata({ params }: { params: Promise<{ category: string }> }): Promise<Metadata> {
+  const { category } = await params;
+  try {
+    const cat = await getCategoryBySlug(category);
+    if (!cat) return { title: "Shop", robots: { index: false, follow: false } };
+
+    const title = cat.name;
+    const description = cat.description || `Shop ${cat.name} at MAMAHAIR.`;
+    const canonical = `/shop/${cat.slug}`;
+    const image = cat.imageUrl || undefined;
+
+    return {
+      title,
+      description,
+      alternates: { canonical },
+      openGraph: {
+        type: "website",
+        url: canonical,
+        title,
+        description,
+        images: image ? [{ url: image, alt: cat.name }] : undefined,
+      },
+      twitter: {
+        card: image ? "summary_large_image" : "summary",
+        title,
+        description,
+        images: image ? [image] : undefined,
+      },
+    };
+  } catch (error) {
+    console.error("Category metadata failed", { category, error });
+    return {
+      title: "Shop",
+      alternates: { canonical: `/shop/${category}` },
+    };
+  }
 }
