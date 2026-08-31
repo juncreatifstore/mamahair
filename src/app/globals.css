@@ -31,5 +31,72 @@ h1, h2, h3, .display { font-family: var(--font-display); font-weight: 500; lette
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }
 
+/* ---- Homepage compact browse controls ----
+   The markup still uses aspect-square utility classes, but these two browse
+   sections should behave like compact premium selectors instead of large tiles. */
+section:has(a[href^="/shop?length="]) {
+  padding-top: 1.5rem;
+  padding-bottom: 1.5rem;
+}
+
+section:has(a[href^="/shop?length="]) > div:first-child {
+  margin-bottom: 1rem;
+}
+
+section:has(a[href^="/shop?length="]) .grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+section:has(a[href^="/shop?length="]) a[href^="/shop?length="] {
+  aspect-ratio: auto !important;
+  min-width: 4.4rem;
+  min-height: 2.7rem;
+  padding: 0.6rem 1rem;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: none;
+}
+
+section:has(a[href^="/shop?length="]) a[href^="/shop?length="] span {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+section:has(a[href^="/shop?hairType="]) {
+  padding-top: 1.5rem;
+  padding-bottom: 2rem;
+}
+
+section:has(a[href^="/shop?hairType="]) > div:first-child {
+  margin-bottom: 1rem;
+}
+
+section:has(a[href^="/shop?hairType="]) .grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+section:has(a[href^="/shop?hairType="]) a[href^="/shop?hairType="] {
+  aspect-ratio: auto !important;
+  min-height: 4.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 1rem;
+  box-shadow: none;
+}
+
+section:has(a[href^="/shop?hairType="]) a[href^="/shop?hairType="] span {
+  font-size: 1.65rem;
+}
+
+@media (min-width: 640px) {
+  section:has(a[href^="/shop?hairType="]) .grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
 @media print { header, footer, nav, .no-print { display: none !important; } body { background: #fff; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
