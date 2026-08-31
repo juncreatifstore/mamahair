@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Image from "next/image";
-import { reorderImages } from "@/server/admin/products";
+import { reorderProductImages } from "@/server/admin/product-images";
 
 export function ImageReorder({
   productId,
@@ -15,6 +15,7 @@ export function ImageReorder({
   const [order, setOrder] = useState(initialOrder);
   const [savedOrder, setSavedOrder] = useState(initialOrder);
   const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
 
   if (images.length < 2) return null;
 
@@ -26,16 +27,23 @@ export function ImageReorder({
     const next = [...order];
     [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
     setOrder(next);
+    setError(null);
   };
 
   const makeMain = (id: string) => {
     setOrder((current) => [id, ...current.filter((imageId) => imageId !== id)]);
+    setError(null);
   };
 
   const save = () => {
     startTransition(async () => {
-      await reorderImages(productId, order);
-      setSavedOrder(order);
+      const result = await reorderProductImages(productId, order);
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
+      setSavedOrder([...order]);
+      setError(null);
     });
   };
 
@@ -59,6 +67,8 @@ export function ImageReorder({
         </div>
       </div>
 
+      {error && <p className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-800" role="alert">{error}</p>}
+
       <div className={`grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 ${pending ? "pointer-events-none opacity-60" : ""}`}>
         {order.map((id, index) => {
           const image = images.find((item) => item.id === id);
@@ -77,7 +87,7 @@ export function ImageReorder({
                     MAIN
                   </span>
                 )}
-                {!isMain && image.kind !== "GALLERY" && (
+                {!isMain && image.kind !== "GALLERY" && image.kind !== "MAIN" && (
                   <span className="absolute bottom-2 right-2 rounded-pill bg-white/90 px-2 py-1 text-[9px] font-medium text-ink shadow-sm">
                     {image.kind.replaceAll("_", " ")}
                   </span>
