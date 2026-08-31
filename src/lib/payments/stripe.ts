@@ -3,12 +3,25 @@ import type { PaymentProvider, CreateCheckoutInput, WebhookOutcome } from "./typ
 
 let stripeClient: Stripe | null = null;
 
-function getStripe() {
+export function getStripe() {
   const apiKey = process.env.STRIPE_SECRET_KEY?.trim();
   if (!apiKey) throw new Error("STRIPE_SECRET_KEY is not configured");
   if (!stripeClient) stripeClient = new Stripe(apiKey, { typescript: true });
   return stripeClient;
 }
+
+/**
+ * Backward-compatible lazy Stripe export.
+ * Accessing a Stripe property initializes the real client only at runtime,
+ * so Next.js can import modules during build/page-data collection without a key.
+ */
+export const stripe = new Proxy({} as Stripe, {
+  get(_target, prop) {
+    const client = getStripe() as unknown as Record<PropertyKey, unknown>;
+    const value = client[prop];
+    return typeof value === "function" ? value.bind(client) : value;
+  },
+});
 
 const LOCALES: Record<string, Stripe.Checkout.SessionCreateParams.Locale> = { en: "en", es: "es", fr: "fr", ht: "fr" };
 
@@ -21,7 +34,6 @@ export const stripeProvider: PaymentProvider = {
       const coupon = await getStripe().coupons.create({ amount_off: input.discountCents, currency: input.currency.toLowerCase(), duration: "once", name: input.discountLabel ?? "Discount" });
       couponId = coupon.id;
     }
-    // Client Stripe avec l'adresse déjà saisie : évite la double saisie et alimente Stripe Tax.
     const customer = await getStripe().customers.create({
       email: input.email,
       name: input.address.fullName,
@@ -44,22 +56,19 @@ export const stripeProvider: PaymentProvider = {
           product_data: { name: l.name, images: l.imageUrl ? [l.imageUrl] : undefined, ...(input.automaticTax && l.taxCode ? { tax_code: l.taxCode } : {}) },
         },
       })),
-      shipping_options: [
-        {
-          shipping_rate_data: {
-            type: "fixed_amount",
-            display_name: input.shipping.name,
-            fixed_amount: { amount: input.shipping.cents, currency: input.currency.toLowerCase() },
-            ...(input.shipping.minDays && input.shipping.maxDays
-              ? { delivery_estimate: { minimum: { unit: "business_day", value: input.shipping.minDays }, maximum: { unit: "business_day", value: input.shipping.maxDays } } }
-              : {}),
-            ...(input.automaticTax ? { tax_behavior: "exclusive", tax_code: "txcd_92010001" } : {}),
-          },
+      shipping_options: [{
+        shipping_rate_data: {
+          type: "fixed_amount",
+          display_name: input.shipping.name,
+          fixed_amount: { amount: input.shipping.cents, currency: input.currency.toLowerCase() },
+          ...(input.shipping.minDays && input.shipping.maxDays
+            ? { delivery_estimate: { minimum: { unit: "business_day", value: input.shipping.minDays }, maximum: { unit: "business_day", value: input.shipping.maxDays } } }
+            : {}),
+          ...(input.automaticTax ? { tax_behavior: "exclusive", tax_code: "txcd_92010001" } : {}),
         },
-      ],
+      }],
       discounts: couponId ? [{ coupon: couponId }] : undefined,
       automatic_tax: input.automaticTax ? { enabled: true } : undefined,
-      // Apple Pay / Google Pay apparaissent automatiquement sur Stripe Checkout quand activés dans le dashboard Stripe.
       expires_at: Math.floor(input.expiresAt.getTime() / 1000),
       metadata: { orderId: input.orderId, cartId: input.cartId },
       client_reference_id: input.orderId,
@@ -112,7 +121,7 @@ export const stripeProvider: PaymentProvider = {
       const s = await getStripe().checkout.sessions.retrieve(providerId);
       if (s.status === "open") await getStripe().checkout.sessions.expire(providerId);
     } catch {
-      /* session inexistante ou déjà fermée : rien à faire */
+      /* session inexistante, déjà fermée, ou Stripe non configuré : rien à faire */
     }
   },
 };
