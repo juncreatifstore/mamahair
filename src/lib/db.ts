@@ -12,10 +12,35 @@ const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
  * Prisma will report a clear connection/configuration error only if a database
  * query is actually executed without a usable connection at runtime.
  */
-const databaseUrl =
+const rawDatabaseUrl =
   process.env.DATABASE_URL?.trim() ||
   process.env.POSTGRES_PRISMA_URL?.trim() ||
   process.env.POSTGRES_URL?.trim();
+
+function normalizeDatabaseUrl(value?: string) {
+  if (!value) return undefined;
+
+  try {
+    const url = new URL(value);
+    const isSupabaseTransactionPooler =
+      url.hostname.endsWith(".pooler.supabase.com") && url.port === "6543";
+
+    if (isSupabaseTransactionPooler) {
+      // Supabase transaction pooling requires Prisma to operate in PgBouncer mode.
+      // This disables prepared statements that otherwise cause PostgreSQL 42P05
+      // errors such as: prepared statement "s0" already exists.
+      if (!url.searchParams.has("pgbouncer")) url.searchParams.set("pgbouncer", "true");
+      if (!url.searchParams.has("connection_limit")) url.searchParams.set("connection_limit", "1");
+    }
+
+    return url.toString();
+  } catch {
+    // Preserve the original value so Prisma can return the useful validation error.
+    return value;
+  }
+}
+
+const databaseUrl = normalizeDatabaseUrl(rawDatabaseUrl);
 
 export const isDatabaseConfigured = Boolean(databaseUrl);
 
