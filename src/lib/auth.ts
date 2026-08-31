@@ -8,14 +8,17 @@ import { createSupabaseServer } from "./supabase/server";
  * à la première connexion (id = uid Supabase).
  *
  * Les pages publiques ne doivent jamais tomber en 500 si Supabase Auth n'est
- * pas encore configuré dans l'environnement Vercel : dans ce cas on traite la
- * requête comme une session invitée et on retourne null.
+ * pas disponible ou renvoie une erreur au runtime : on journalise et on traite
+ * alors la requête comme une session invitée.
  */
 export const getCurrentUser = cache(async () => {
   try {
     const supabase = await createSupabaseServer();
     const { data, error } = await supabase.auth.getUser();
-    if (error) return null;
+    if (error) {
+      console.warn("Supabase auth unavailable for current request", error.message);
+      return null;
+    }
 
     const authUser = data.user;
     if (!authUser?.email) return null;
@@ -32,14 +35,8 @@ export const getCurrentUser = cache(async () => {
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (
-      message.includes("Supabase server configuration is missing") ||
-      message.includes("project's URL and Key are required")
-    ) {
-      return null;
-    }
-    throw error;
+    console.error("getCurrentUser failed; continuing as guest", error);
+    return null;
   }
 });
 
