@@ -7,17 +7,18 @@ import { getPaymentProvider } from "@/lib/payments";
 import { releaseOrderReservations, restock, lockOrder } from "@/lib/stock";
 import { sendOrderShipped, sendOrderProcessing, sendOrderDelivered, sendRefund } from "@/lib/email";
 import { logger } from "@/lib/logger";
-import type { OrderStatus, Prisma } from "@prisma/client";
+import type { OrderStatus, PaymentStatus, Prisma } from "@prisma/client";
 
-export async function adminListOrders(opts: { status?: string; q?: string; from?: string; to?: string } = {}) {
+export async function adminListOrders(opts: { status?: string; payment?: string; q?: string; from?: string; to?: string } = {}) {
   await requireAdmin();
   const where: Prisma.OrderWhereInput = opts.status ? { status: opts.status as OrderStatus } : { status: { not: "PENDING_PAYMENT" } };
+  if (opts.payment) where.payment = { is: { status: opts.payment as PaymentStatus } };
   if (opts.q) {
     const n = parseInt(opts.q.replace("#", ""), 10);
     where.OR = [{ email: { contains: opts.q, mode: "insensitive" } }, ...(isNaN(n) ? [] : [{ number: n }]), { items: { some: { sku: { contains: opts.q, mode: "insensitive" } } } }, { user: { OR: [{ firstName: { contains: opts.q, mode: "insensitive" } }, { lastName: { contains: opts.q, mode: "insensitive" } }] } }];
   }
   if (opts.from || opts.to) where.createdAt = { ...(opts.from ? { gte: new Date(opts.from) } : {}), ...(opts.to ? { lte: new Date(opts.to + "T23:59:59") } : {}) };
-  return db.order.findMany({ where, orderBy: { createdAt: "desc" }, include: { items: true, user: { select: { firstName: true, lastName: true } }, payment: { select: { status: true, method: true } } }, take: 300 });
+  return db.order.findMany({ where, orderBy: { createdAt: "desc" }, include: { items: true, shipment: true, user: { select: { firstName: true, lastName: true } }, payment: { select: { status: true, method: true } } }, take: 300 });
 }
 
 export async function adminGetOrder(id: string) {
@@ -51,7 +52,6 @@ export async function updateOrderStatus(id: string, formData: FormData): Promise
       const locked = await lockOrder(tx, id);
       if (locked !== current.status) throw new Error(`Order changed to ${locked} meanwhile`);
       if (status === "CANCELLED") {
-        // Annulation : stock libéré (pending) ou remis (payé ; le remboursement se fait séparément)
         if (current.status === "PENDING_PAYMENT") await releaseOrderReservations(tx, id);
         else for (const i of current.items) await restock(tx, i.variantId, i.quantity);
       }
@@ -62,7 +62,7 @@ export async function updateOrderStatus(id: string, formData: FormData): Promise
     return { error: "The order could not be updated. Refresh and try again." };
   }
   if (status === "CANCELLED" && current.status === "PENDING_PAYMENT" && current.payment?.providerId) {
-    await getPaymentProvider(current.payment.provider).cancelCheckout(current.payment.providerId); // aucun paiement tardif possible
+    await getPaymentProvider(current.payment.provider).cancelCheckout(current.payment.providerId);
   }
 
   if (status === "SHIPPED") {
@@ -88,7 +88,6 @@ export async function saveInternalNote(id: string, formData: FormData) {
   revalidatePath(`/admin/orders/${id}`);
 }
 
-/** Remboursement total ou partiel via le fournisseur ; le webhook charge.refunded synchronise aussi. */
 export async function refundOrder(id: string, formData: FormData): Promise<{ error?: string; ok?: boolean }> {
   const admin = await requireAdmin();
   const payment = await db.payment.findUnique({ where: { orderId: id }, include: { order: { include: { items: true } } } });
