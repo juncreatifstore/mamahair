@@ -35,7 +35,22 @@ export default async function StaticPage({ params }: { params: Promise<{ slug: s
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
-  const [{ slug }, locale] = await Promise.all([params, getLocale()]);
-  const page = await loadPage(slug, locale);
-  return { title: page?.seoTitle ?? page?.title ?? "Page", description: page?.seoDescription ?? undefined };
+  const { slug } = await params;
+  try {
+    const locale = await getLocale();
+    const page = await loadPage(slug, locale);
+    if (!page) return { title: "Page", alternates: { canonical: `/pages/${slug}` } };
+    const title = page.seoTitle ?? page.title;
+    const description = page.seoDescription ?? undefined;
+    return {
+      title,
+      description,
+      alternates: { canonical: `/pages/${slug}` },
+      openGraph: { type: "website", title, description, url: `/pages/${slug}` },
+      twitter: { card: "summary", title, description },
+    };
+  } catch (error) {
+    console.error("static page metadata lookup failed", error);
+    return { title: "MAMAHAIR", alternates: { canonical: `/pages/${slug}` } };
+  }
 }
