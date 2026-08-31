@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
@@ -14,7 +15,13 @@ import { Badge } from "@/components/ui/badge";
 import { CONCERN_LABELS, HAIR_TYPE_LABELS } from "@/lib/utils";
 import { formatCents } from "@/lib/money";
 
-const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+const FALLBACK_SITE = "https://mamahair.vercel.app";
+function siteUrl() {
+  const raw = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (!raw) return FALLBACK_SITE;
+  try { return new URL(raw).origin; } catch { return FALLBACK_SITE; }
+}
+const SITE = siteUrl();
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -26,7 +33,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   const specs: [string, string | null | undefined][] = [
     [tp.material, p.hairMaterial], [tp.origin, p.hairOrigin], [tp.grade, p.hairGrade], [tp.wigType, p.wigType], [tp.capSize, p.capSize],
-    [tp.texture, p.textures.join(", ")], [tp.length, p.lengths.length ? `${p.lengths.map((l) => `${l}"`).join(", ")}` : null], [tp.density, p.densities.join(", ")], [tp.lace, p.laceTypes.join(", ")], [tp.color, p.colors.join(", ")],
+    [tp.texture, p.textures.join(", ")], [tp.length, p.lengths.length ? `${p.lengths.map((l) => `${l}\"`).join(", ")}` : null], [tp.density, p.densities.join(", ")], [tp.lace, p.laceTypes.join(", ")], [tp.color, p.colors.join(", ")],
     [tp.bundles, p.bundlesCount ? String(p.bundlesCount) : null], ["Closure", p.closureType], ["Parting", p.parting],
     ...Object.entries((p.attributes as Record<string, string> | null) ?? {}),
   ];
@@ -108,8 +115,40 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   );
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
-  const p = await getProductBySlug((await params).slug);
-  if (!p) return {};
-  return { title: p.seoTitle || p.name, description: p.seoDescription || p.shortDesc || undefined, alternates: { canonical: `/products/${p.slug}` }, openGraph: { type: "website", images: p.images[0]?.url ? [p.images[0].url] : [] } };
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  try {
+    const p = await getProductBySlug(slug);
+    if (!p) return { title: "Product", robots: { index: false, follow: false } };
+
+    const title = p.seoTitle || p.name;
+    const description = p.seoDescription || p.shortDesc || p.description?.slice(0, 160) || undefined;
+    const image = p.images[0]?.url;
+    const canonical = `/products/${p.slug}`;
+
+    return {
+      title,
+      description,
+      alternates: { canonical },
+      openGraph: {
+        type: "website",
+        url: canonical,
+        title,
+        description,
+        images: image ? [{ url: image, alt: p.name }] : undefined,
+      },
+      twitter: {
+        card: image ? "summary_large_image" : "summary",
+        title,
+        description,
+        images: image ? [image] : undefined,
+      },
+    };
+  } catch (error) {
+    console.error("Product metadata failed", { slug, error });
+    return {
+      title: "Product",
+      alternates: { canonical: `/products/${slug}` },
+    };
+  }
 }
