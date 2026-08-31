@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Package, ShoppingCart, Users, Tag, Truck, FileText, Settings, ExternalLink, Star, ShoppingBasket } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, Users, Tag, Truck, FileText, Settings, ExternalLink, Star, ShoppingBasket, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const links = [
@@ -13,6 +13,7 @@ const links = [
   { href: "/admin/discounts", label: "Discounts", icon: Tag },
   { href: "/admin/shipping", label: "Shipping & tax", icon: Truck },
   { href: "/admin/abandoned-carts", label: "Abandoned carts", icon: ShoppingBasket },
+  { href: "/admin/emails", label: "Emails", icon: Mail },
   { href: "/admin/content", label: "Content", icon: FileText },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ] as const;
