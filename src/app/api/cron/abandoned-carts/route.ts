@@ -28,7 +28,16 @@ export async function GET(req: Request) {
     },
     include: {
       user: { select: { email: true, isBlocked: true } },
-      items: { include: { variant: { include: { product: { select: { name: true } } } } } },
+      items: {
+        include: {
+          variant: {
+            include: {
+              image: true,
+              product: { select: { name: true, images: { take: 1, orderBy: { sortOrder: "asc" } } } },
+            },
+          },
+        },
+      },
     },
     take: 50,
   });
@@ -42,7 +51,12 @@ export async function GET(req: Request) {
 
     await sendAbandonedCart(
       email,
-      c.items.map((i) => ({ productName: i.variant.product.name, variantName: i.variant.name, quantity: i.quantity })),
+      c.items.map((i) => ({
+        productName: i.variant.product.name,
+        variantName: i.variant.name,
+        quantity: i.quantity,
+        imageUrl: i.variant.image?.url ?? i.variant.product.images[0]?.url ?? null,
+      })),
       process.env.ABANDONED_CART_CODE,
     );
     await db.cart.update({ where: { id: c.id }, data: { recoveryEmailSentAt: new Date() } });
