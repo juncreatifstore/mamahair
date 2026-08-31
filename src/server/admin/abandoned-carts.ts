@@ -21,7 +21,8 @@ export async function adminListAbandonedCarts() {
           variant: {
             include: {
               inventory: true,
-              product: { select: { id: true, name: true, slug: true, currency: true } },
+              image: true,
+              product: { select: { id: true, name: true, slug: true, currency: true, images: { take: 1, orderBy: { sortOrder: "asc" } } } },
             },
           },
         },
@@ -38,7 +39,16 @@ export async function sendAbandonedCartRecovery(cartId: string): Promise<{ ok?: 
     where: { id: cartId },
     include: {
       user: { select: { email: true, isBlocked: true } },
-      items: { include: { variant: { include: { product: { select: { name: true } } } } } },
+      items: {
+        include: {
+          variant: {
+            include: {
+              image: true,
+              product: { select: { name: true, images: { take: 1, orderBy: { sortOrder: "asc" } } } },
+            },
+          },
+        },
+      },
     },
   });
 
@@ -51,7 +61,12 @@ export async function sendAbandonedCartRecovery(cartId: string): Promise<{ ok?: 
 
   await sendAbandonedCart(
     email,
-    cart.items.map((i) => ({ productName: i.variant.product.name, variantName: i.variant.name, quantity: i.quantity })),
+    cart.items.map((i) => ({
+      productName: i.variant.product.name,
+      variantName: i.variant.name,
+      quantity: i.quantity,
+      imageUrl: i.variant.image?.url ?? i.variant.product.images[0]?.url ?? null,
+    })),
     process.env.ABANDONED_CART_CODE,
   );
 
