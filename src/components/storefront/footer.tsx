@@ -31,6 +31,7 @@ export async function Footer() {
         <div className="space-y-2 text-sm">
           <p className="font-semibold">{t.footer.company}</p>
           <Link href="/pages/about" className="block text-cream/75 hover:text-peach">{t.footer.about}</Link>
+          <Link href="/blog" className="block text-cream/75 hover:text-peach">Blog</Link>
           <Link href="/pages/privacy" className="block text-cream/75 hover:text-peach">{t.footer.privacy}</Link>
           <Link href="/pages/terms" className="block text-cream/75 hover:text-peach">{t.footer.terms}</Link>
           <Link href="/shop" className="block text-cream/75 hover:text-peach">{t.footer.shop}</Link>
