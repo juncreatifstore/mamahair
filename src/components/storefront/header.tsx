@@ -22,6 +22,8 @@ export async function Header() {
     { href: "/blog", label: "Blog" },
   ];
 
+  const localeLabels = { language: t.nav.language, currency: t.nav.currency };
+
   return (
     <header className="sticky top-0 z-40">
       {b.announcementEnabled && b.announcement && (
@@ -29,7 +31,15 @@ export async function Header() {
       )}
       <div className="border-b border-sand/80 bg-cream/90 shadow-[0_8px_30px_rgba(74,27,12,0.04)] backdrop-blur-xl">
         <div className="mx-auto flex min-h-[76px] max-w-7xl items-center gap-3 px-4 sm:px-6">
-          <MobileMenu nav={nav} label={t.nav.menu} />
+          <MobileMenu
+            nav={nav}
+            label={t.nav.menu}
+            locale={locale}
+            currency={currency}
+            locales={b.localization.enabledLocales}
+            currencies={b.commerce.enabledCurrencies}
+            labels={localeLabels}
+          />
 
           <Link href="/" className="flex shrink-0 items-center" aria-label={b.storeName}>
             {headerLogo ? (
@@ -47,7 +57,7 @@ export async function Header() {
 
           <div className="ml-auto flex items-center gap-0.5 sm:gap-1.5">
             <SearchBox placeholder={t.shop.searchPlaceholder} />
-            <LocaleCurrencySwitcher locale={locale} currency={currency} locales={b.localization.enabledLocales} currencies={b.commerce.enabledCurrencies} labels={{ language: t.nav.language, currency: t.nav.currency }} />
+            <LocaleCurrencySwitcher locale={locale} currency={currency} locales={b.localization.enabledLocales} currencies={b.commerce.enabledCurrencies} labels={localeLabels} />
             <Link href="/account/wishlist" aria-label={t.nav.wishlist} className="hidden size-10 place-items-center rounded-full transition hover:bg-petal sm:grid"><Heart className="size-[19px]" strokeWidth={1.7} /></Link>
             <Link href={user ? "/account" : "/login"} aria-label={t.nav.account} className="grid size-10 place-items-center rounded-full transition hover:bg-petal"><User className="size-[19px]" strokeWidth={1.7} /></Link>
             <Link href="/cart" aria-label={t.nav.cart} className="relative grid size-10 place-items-center rounded-full transition hover:bg-petal">
