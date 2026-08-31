@@ -78,10 +78,59 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
       </Table>
 
       <Card title="Categories" className="mt-8">
-        <ul className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {categories.map((c) => <li key={c.id} className="flex items-center gap-3 rounded-xl border border-sand p-2"><div className="relative size-12 overflow-hidden rounded-lg bg-petal">{c.imageUrl && <Image src={c.imageUrl} alt="" fill sizes="48px" className="object-cover" />}</div><div className="flex-1 text-sm"><p className="font-medium">{c.name}</p><p className="text-xs text-ink-soft">/{c.slug}</p></div><form action={async (fd) => { "use server"; await uploadCategoryImage(c.slug, fd); }} className="flex items-center gap-1"><input type="file" name="file" accept="image/*" className="w-24 text-xs" /><button className="text-xs underline">Set image</button></form></li>)}
-        </ul>
-        <form action={async (fd) => { "use server"; await saveCategory(fd); }} className="flex flex-wrap items-end gap-3"><Field label="Category name"><Input name="name" required /></Field><Field label="Slug"><Input name="slug" placeholder="auto" /></Field><Field label="Description"><Input name="description" className="min-w-64" /></Field><SubmitButton variant="ghost">Add / update category</SubmitButton></form>
+        <div className="grid gap-4 lg:grid-cols-2">
+          {categories.map((c) => (
+            <div key={c.id} className="rounded-2xl border border-sand bg-white p-4">
+              <div className="flex items-start gap-4">
+                <div className="relative size-20 shrink-0 overflow-hidden rounded-xl bg-petal">
+                  {c.imageUrl ? <Image src={c.imageUrl} alt={c.name} fill sizes="80px" className="object-cover" /> : <div className="grid h-full place-items-center text-xs text-ink-soft">No image</div>}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-semibold">{c.name}</p>
+                    <Badge tone={c.isActive ? "green" : "neutral"}>{c.isActive ? "Active" : "Hidden"}</Badge>
+                    {c.showOnHome && <Badge tone="honey">Home</Badge>}
+                  </div>
+                  <p className="mt-1 text-xs text-ink-soft">/{c.slug} · {c._count.products} products · order {c.sortOrder}</p>
+                </div>
+              </div>
+
+              <form action={async (fd) => { "use server"; await saveCategory(fd); }} className="mt-4 grid gap-3 sm:grid-cols-2">
+                <input type="hidden" name="id" value={c.id} />
+                <Field label="Name"><Input name="name" defaultValue={c.name} required /></Field>
+                <Field label="Slug"><Input name="slug" defaultValue={c.slug} required /></Field>
+                <Field label="Description" className="sm:col-span-2"><Input name="description" defaultValue={c.description ?? ""} /></Field>
+                <Field label="Sort order"><Input name="sortOrder" type="number" defaultValue={c.sortOrder} /></Field>
+                <div className="flex flex-wrap items-end gap-4 pb-2 text-sm">
+                  <label className="inline-flex items-center gap-2"><input type="checkbox" name="isActive" defaultChecked={c.isActive} className="accent-cocoa" /> Active</label>
+                  <label className="inline-flex items-center gap-2"><input type="checkbox" name="showOnHome" defaultChecked={c.showOnHome} className="accent-cocoa" /> Show on home</label>
+                </div>
+                <div className="sm:col-span-2"><SubmitButton size="sm" variant="ghost">Save category</SubmitButton></div>
+              </form>
+
+              <form action={async (fd) => { "use server"; await uploadCategoryImage(c.id, fd); }} className="mt-4 flex flex-wrap items-end gap-3 border-t border-sand pt-4">
+                <Field label="Category image"><Input type="file" name="file" accept="image/jpeg,image/png,image/webp,image/avif" required className="py-2" /></Field>
+                <SubmitButton size="sm" variant="ghost" pendingText="Uploading…">Replace image</SubmitButton>
+              </form>
+            </div>
+          ))}
+          {categories.length === 0 && <p className="text-sm text-ink-soft">No categories yet.</p>}
+        </div>
+
+        <div className="mt-6 border-t border-sand pt-6">
+          <p className="mb-3 font-semibold">Add category</p>
+          <form action={async (fd) => { "use server"; await saveCategory(fd); }} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Field label="Category name"><Input name="name" required /></Field>
+            <Field label="Slug"><Input name="slug" placeholder="auto from name" /></Field>
+            <Field label="Description"><Input name="description" /></Field>
+            <Field label="Sort order"><Input name="sortOrder" type="number" defaultValue={0} /></Field>
+            <div className="flex flex-wrap items-center gap-4 text-sm sm:col-span-2">
+              <label className="inline-flex items-center gap-2"><input type="checkbox" name="isActive" defaultChecked className="accent-cocoa" /> Active</label>
+              <label className="inline-flex items-center gap-2"><input type="checkbox" name="showOnHome" defaultChecked className="accent-cocoa" /> Show on home</label>
+            </div>
+            <div className="sm:col-span-2"><SubmitButton variant="ghost">Add category</SubmitButton></div>
+          </form>
+        </div>
       </Card>
     </>
   );
