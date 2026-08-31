@@ -28,7 +28,7 @@ export async function saveSettingsSection(section: SettingSection, formData: For
     if (cur.some((c) => !isSupportedCurrency(c))) return { error: "Unsupported currency code." };
     if (!cur.includes(String(value.defaultCurrency).toUpperCase())) return { error: "Default currency must be in the enabled currencies." };
     value.defaultCurrency = String(value.defaultCurrency).toUpperCase();
-    value.reservationMinutes = Math.min(1440, Math.max(30, Number(value.reservationMinutes) || 30)); // bornes Stripe expires_at
+    value.reservationMinutes = Math.min(1440, Math.max(30, Number(value.reservationMinutes) || 30));
   }
   await saveSection(section, value as never);
   revalidatePath("/", "layout");
@@ -202,13 +202,29 @@ export async function adminListCustomers(q?: string) {
 
 export async function adminGetCustomer(id: string) {
   await requireAdmin();
-  return db.user.findUnique({ where: { id }, include: { addresses: true, orders: { orderBy: { createdAt: "desc" }, include: { items: true } }, reviews: true, wishlist: { include: { product: { select: { name: true } } } } } });
+  return db.user.findUnique({
+    where: { id },
+    include: {
+      addresses: true,
+      hairProfile: true,
+      orders: { orderBy: { createdAt: "desc" }, include: { items: true, payment: true, shipment: true } },
+      reviews: { include: { product: { select: { name: true, slug: true } } }, orderBy: { createdAt: "desc" } },
+      wishlist: { include: { product: { select: { id: true, name: true, slug: true, basePriceCents: true, currency: true, images: { take: 1, orderBy: { sortOrder: "asc" } } } } }, orderBy: { createdAt: "desc" } },
+      cart: {
+        include: {
+          discount: { select: { code: true } },
+          items: { include: { variant: { include: { inventory: true, image: true, product: { select: { id: true, name: true, slug: true, images: { take: 1, orderBy: { sortOrder: "asc" } } } } } } } },
+        },
+      },
+    },
+  });
 }
 
 export async function saveCustomerNotes(id: string, formData: FormData) {
   await requireAdmin();
   await db.user.update({ where: { id }, data: { notes: String(formData.get("notes") ?? ""), isBlocked: formData.get("isBlocked") === "on" } });
   revalidatePath(`/admin/customers/${id}`);
+  revalidatePath("/admin/customers");
 }
 
 // ---- Paniers abandonnés & wishlist ----
