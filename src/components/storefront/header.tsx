@@ -43,9 +43,9 @@ export async function Header() {
 
           <Link href="/" className="flex shrink-0 items-center" aria-label={b.storeName}>
             {headerLogo ? (
-              <Image src={headerLogo} alt={b.storeName} width={180} height={56} className="h-10 w-auto object-contain sm:h-11" priority />
+              <Image src={headerLogo} alt={b.storeName} width={180} height={56} className="h-10 w-auto max-w-[145px] object-contain sm:h-11 sm:max-w-none" priority />
             ) : (
-              <span className="display text-[1.65rem] tracking-[0.08em] text-cocoa sm:text-3xl">{b.storeName}</span>
+              <span className="display text-[1.45rem] tracking-[0.08em] text-cocoa sm:text-3xl">{b.storeName}</span>
             )}
           </Link>
 
@@ -59,11 +59,24 @@ export async function Header() {
             <SearchBox placeholder={t.shop.searchPlaceholder} />
             <LocaleCurrencySwitcher locale={locale} currency={currency} locales={b.localization.enabledLocales} currencies={b.commerce.enabledCurrencies} labels={localeLabels} />
             <Link href="/account/wishlist" aria-label={t.nav.wishlist} className="hidden size-10 place-items-center rounded-full transition hover:bg-petal sm:grid"><Heart className="size-[19px]" strokeWidth={1.7} /></Link>
-            <Link href={user ? "/account" : "/login"} aria-label={t.nav.account} className="grid size-10 place-items-center rounded-full transition hover:bg-petal"><User className="size-[19px]" strokeWidth={1.7} /></Link>
+            <Link href={user ? "/account" : "/login"} aria-label={t.nav.account} className="hidden size-10 place-items-center rounded-full transition hover:bg-petal sm:grid"><User className="size-[19px]" strokeWidth={1.7} /></Link>
             <Link href="/cart" aria-label={t.nav.cart} className="relative grid size-10 place-items-center rounded-full transition hover:bg-petal">
               <ShoppingBag className="size-5" strokeWidth={1.7} />
               {count > 0 && <span className="absolute right-0 top-0 grid size-[19px] place-items-center rounded-full bg-flame text-[10px] font-bold text-white shadow-sm">{count}</span>}
             </Link>
+          </div>
+        </div>
+
+        <div className="border-t border-sand/70 bg-white/75 px-3 py-2 md:hidden">
+          <div className="mx-auto max-w-7xl">
+            <LocaleCurrencySwitcher
+              mobileBar
+              locale={locale}
+              currency={currency}
+              locales={b.localization.enabledLocales}
+              currencies={b.commerce.enabledCurrencies}
+              labels={localeLabels}
+            />
           </div>
         </div>
       </div>
