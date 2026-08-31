@@ -131,7 +131,6 @@ export async function saveVariant(productId: string, formData: FormData): Promis
     const data = { ...v, options: v.options ?? undefined, imageId: imageId || null };
     if (id) {
       await tx.productVariant.update({ where: { id, productId }, data });
-      // Ajustement de stock : jamais en dessous du réservé
       const inv = await tx.inventory.findUnique({ where: { variantId: id } });
       const safeQty = Math.max(quantity, inv?.reserved ?? 0);
       await tx.inventory.upsert({ where: { variantId: id }, create: { variantId: id, quantity: safeQty }, update: { quantity: safeQty } });
@@ -143,7 +142,6 @@ export async function saveVariant(productId: string, formData: FormData): Promis
   return { ok: true };
 }
 
-/** Génère toutes les combinaisons d'options (texture × longueur × …) en variantes DRAFT prix de base. */
 export async function generateVariants(productId: string, formData: FormData): Promise<ActionState> {
   await requireAdmin();
   const p = await db.product.findUnique({ where: { id: productId }, select: { basePriceCents: true, slug: true, weightGrams: true } });
@@ -179,44 +177,6 @@ export async function deleteVariant(productId: string, variantId: string): Promi
   return { ok: true };
 }
 
-// ---- Images ----
-export async function uploadProductImages(productId: string, formData: FormData): Promise<ActionState> {
-  await requireAdmin();
-  const files = formData.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
-  if (!files.length) return { error: "Choose at least one image." };
-  const kind = (String(formData.get("kind") ?? "GALLERY") as ImageKind) ?? "GALLERY";
-  const alt = String(formData.get("alt") ?? "");
-  let count = await db.productImage.count({ where: { productId } });
-  for (const f of files.slice(0, 10)) {
-    const up = await uploadImage("products", productId, f);
-    if (up.error || !up.url) return { error: up.error ?? "Upload failed." };
-    await db.productImage.create({ data: { productId, url: up.url, path: up.path, alt, kind: count === 0 ? "MAIN" : kind, sortOrder: count++ } });
-  }
-  revalidatePath(`/admin/products/${productId}`);
-  return { ok: true };
-}
-
-export async function deleteProductImage(productId: string, imageId: string) {
-  await requireAdmin();
-  const img = await db.productImage.findFirst({ where: { id: imageId, productId } });
-  if (!img) return;
-  await db.productImage.delete({ where: { id: imageId } });
-  await deleteUpload("products", img.path);
-  revalidatePath(`/admin/products/${productId}`);
-}
-
-export async function reorderImages(productId: string, orderedIds: string[]) {
-  await requireAdmin();
-  await db.$transaction(orderedIds.map((id, i) => db.productImage.update({ where: { id, productId }, data: { sortOrder: i, kind: i === 0 ? "MAIN" : undefined } })));
-  revalidatePath(`/admin/products/${productId}`);
-}
-
-export async function updateImageMeta(productId: string, imageId: string, formData: FormData) {
-  await requireAdmin();
-  await db.productImage.update({ where: { id: imageId, productId }, data: { alt: String(formData.get("alt") ?? ""), kind: String(formData.get("kind") ?? "GALLERY") as ImageKind } });
-  revalidatePath(`/admin/products/${productId}`);
-}
-
 // ---- Bundles ----
 export async function addBundleItem(productId: string, formData: FormData): Promise<ActionState> {
   await requireAdmin();
@@ -240,27 +200,47 @@ export async function removeBundleItem(productId: string, itemId: string) {
 // ---- Catégories ----
 export async function adminListCategories() {
   await requireAdmin();
-  return db.category.findMany({ orderBy: { sortOrder: "asc" } });
+  return db.category.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }], include: { _count: { select: { products: true } } } });
 }
 
 export async function saveCategory(formData: FormData): Promise<ActionState> {
   await requireAdmin();
+  const id = String(formData.get("id") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return { error: "Name is required." };
   const slug = String(formData.get("slug") ?? "").trim() || slugify(name);
-  const data = { name, description: String(formData.get("description") ?? ""), showOnHome: formData.get("showOnHome") !== "off" };
-  await db.category.upsert({ where: { slug }, update: data, create: { ...data, slug } });
-  revalidatePath("/admin/products"); revalidatePath("/");
+  const sortOrderRaw = parseInt(String(formData.get("sortOrder") ?? "0"), 10);
+  const data = {
+    name,
+    slug,
+    description: String(formData.get("description") ?? "").trim() || null,
+    isActive: formData.get("isActive") === "on",
+    showOnHome: formData.get("showOnHome") === "on",
+    sortOrder: Number.isFinite(sortOrderRaw) ? sortOrderRaw : 0,
+  };
+
+  const slugClash = await db.category.findFirst({ where: { slug, ...(id ? { id: { not: id } } : {}) }, select: { id: true } });
+  if (slugClash) return { error: "This category slug is already used." };
+
+  if (id) await db.category.update({ where: { id }, data });
+  else await db.category.create({ data });
+
+  revalidatePath("/admin/products");
+  revalidatePath("/");
+  revalidatePath("/shop");
+  revalidatePath(`/shop/${slug}`);
   return { ok: true };
 }
 
-export async function uploadCategoryImage(slug: string, formData: FormData): Promise<ActionState> {
+export async function uploadCategoryImage(categoryId: string, formData: FormData): Promise<ActionState> {
   await requireAdmin();
+  const category = await db.category.findUnique({ where: { id: categoryId }, select: { slug: true } });
+  if (!category) return { error: "Category not found." };
   const file = formData.get("file");
-  if (!(file instanceof File)) return { error: "Choose an image." };
-  const up = await uploadImage("products", `categories/${slug}`, file);
+  if (!(file instanceof File) || file.size === 0) return { error: "Choose an image." };
+  const up = await uploadImage("products", `categories/${category.slug}`, file);
   if (up.error || !up.url) return { error: up.error ?? "Upload failed." };
-  await db.category.update({ where: { slug }, data: { imageUrl: up.url } });
-  revalidatePath("/"); revalidatePath("/admin/products");
+  await db.category.update({ where: { id: categoryId }, data: { imageUrl: up.url } });
+  revalidatePath("/"); revalidatePath("/shop"); revalidatePath(`/shop/${category.slug}`); revalidatePath("/admin/products");
   return { ok: true };
 }
