@@ -8,9 +8,10 @@ import { getT, getLocale, getCurrency } from "@/i18n/server";
 import { ProductCard } from "@/components/storefront/product-card";
 import { NewsletterForm } from "@/components/storefront/newsletter-form";
 import { HeroVideo } from "@/components/storefront/hero-video";
+import { TextureVideoCard } from "@/components/storefront/texture-video-card";
 import { Button } from "@/components/ui/button";
 import { HAIR_TYPE_LABELS } from "@/lib/utils";
-import { TEXTURES, LENGTHS } from "@/lib/catalog";
+import { LENGTHS } from "@/lib/catalog";
 
 const MODEL_IMAGES = [
   "https://images.unsplash.com/photo-1645736279976-59f8fd22720c?auto=format&fit=crop&q=88&w=1600",
@@ -24,8 +25,6 @@ const HERO_VIDEO_FALLBACKS = [
   "https://videos.pexels.com/video-files/4107785/4107785-sd_540_676_30fps.mp4",
   "https://videos.pexels.com/video-files/8154497/8154497-uhd_4096_2160_25fps.mp4",
 ];
-
-const TEXTURE_IMAGES = [MODEL_IMAGES[1], MODEL_IMAGES[0], MODEL_IMAGES[2], MODEL_IMAGES[3], MODEL_IMAGES[0], MODEL_IMAGES[1], MODEL_IMAGES[2]];
 
 const TESTIMONIALS = [
   { name: "Ashley M.", text: "The lace melts beautifully and the hair stays soft. It looks even better in person." },
@@ -236,14 +235,11 @@ export default async function HomePage() {
 
       <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:py-16">
         <SectionHeading eyebrow={isFr ? "Acheter par texture" : "Shop by texture"} title={t.home.byTexture} />
-        <div className="no-scrollbar -mx-4 flex gap-2.5 overflow-x-auto px-4 pb-2 sm:mx-0 sm:gap-4 sm:px-0">
-          {TEXTURES.slice(0, 7).map((tx, i) => (
-            <Link key={tx} href={`/shop?texture=${encodeURIComponent(tx)}`} className="group relative h-[210px] min-w-[145px] overflow-hidden rounded-[1.15rem] bg-cocoa sm:h-[300px] sm:min-w-[205px]">
-              <div className="absolute inset-0 bg-cover bg-center transition duration-500 group-hover:scale-105" style={{ backgroundImage: `url(${TEXTURE_IMAGES[i % TEXTURE_IMAGES.length]})` }} />
-              <div className="absolute inset-0 bg-gradient-to-t from-cocoa/80 via-transparent to-transparent" />
-              <span className="absolute inset-x-0 bottom-0 p-4 text-center text-[10px] font-bold uppercase tracking-[.12em] text-white sm:text-xs">{tx}</span>
-            </Link>
-          ))}
+        <p className="-mt-4 mb-6 max-w-2xl text-sm leading-6 text-ink-soft sm:-mt-5 sm:mb-8">
+          {isFr ? "Voyez le mouvement, la brillance et le tombé de chaque texture sur des modèles noirs avant de choisir vos extensions." : "See the movement, shine and finish of each texture on Black models before choosing your extensions."}
+        </p>
+        <div className="no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-4 sm:px-0 lg:grid-cols-4 xl:grid-cols-7">
+          {blocks.texture_videos.items.map((item) => <TextureVideoCard key={item.name} item={item} />)}
         </div>
       </section>
 
