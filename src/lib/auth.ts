@@ -2,6 +2,7 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { db } from "./db";
 import { createSupabaseServer } from "./supabase/server";
+import { getStaffAccess, hasStaffPermission, type StaffPermission } from "./staff-access";
 
 /**
  * Récupère l'utilisateur courant. Synchronise la table User avec Supabase Auth
@@ -49,6 +50,25 @@ export async function requireUser(next = "/account") {
 export async function requireAdmin() {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/admin");
-  if (user.role !== "ADMIN" && user.role !== "STAFF") redirect("/");
+  if (user.role === "ADMIN") return user;
+  if (user.role !== "STAFF") redirect("/");
+
+  const access = await getStaffAccess(user.email);
+  if (!access?.isActive) redirect("/");
+  return user;
+}
+
+export async function requireOwner() {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login?next=/admin/team");
+  if (user.role !== "ADMIN") redirect("/admin");
+  return user;
+}
+
+export async function requireStaffPermission(permission: StaffPermission) {
+  const user = await requireAdmin();
+  if (user.role === "ADMIN") return user;
+  const access = await getStaffAccess(user.email);
+  if (!hasStaffPermission(access, permission)) redirect("/admin");
   return user;
 }
