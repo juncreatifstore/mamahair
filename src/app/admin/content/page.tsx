@@ -5,6 +5,7 @@ import { PageHeader, Card } from "@/components/admin/ui";
 import { Field, Input, Textarea, Select } from "@/components/ui/input";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { HomeImageUpload } from "@/components/admin/home-image-upload";
+import { HomeVideoUpload } from "@/components/admin/home-video-upload";
 
 export default async function ContentPage() {
   const [pages, blocks, loc] = await Promise.all([adminListPages(), adminListHomeBlocks(), getSection("localization")]);
@@ -13,17 +14,8 @@ export default async function ContentPage() {
     <>
       <PageHeader title="Content" sub="Store pages per language, and the editable blocks of the home page." />
 
-      <div className="mb-6 rounded-2xl border border-flame/20 bg-petal/40 p-5">
-        <p className="text-xs font-bold uppercase tracking-[.14em] text-flame">Homepage hero videos</p>
-        <h2 className="mt-1 text-xl text-cocoa">Les 3 vidéos de la vitrine sont modifiables ici</h2>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-ink-soft">
-          Dans le bloc <strong>hero</strong>, remplace simplement les URL des champs <code>videoMainUrl</code>, <code>videoTopRightUrl</code> et <code>videoBottomRightUrl</code>. Utilise de préférence une URL directe vers un fichier MP4 ou WebM. La vidéo principale est également utilisée sur mobile.
-        </p>
-        <div className="mt-4 grid gap-3 text-xs sm:grid-cols-3">
-          <div className="rounded-xl bg-white p-3"><strong className="block text-cocoa">videoMainUrl</strong><span className="text-ink-soft">Grande vidéo centrale + mobile</span></div>
-          <div className="rounded-xl bg-white p-3"><strong className="block text-cocoa">videoTopRightUrl</strong><span className="text-ink-soft">Vidéo en haut à droite</span></div>
-          <div className="rounded-xl bg-white p-3"><strong className="block text-cocoa">videoBottomRightUrl</strong><span className="text-ink-soft">Vidéo en bas à droite</span></div>
-        </div>
+      <div className="mb-6">
+        <HomeVideoUpload />
       </div>
 
       <h2 className="mb-3 text-xl text-cocoa">Home page blocks</h2>
