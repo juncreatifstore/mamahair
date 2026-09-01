@@ -17,6 +17,8 @@ export type HeroBlock = {
 export type BannerBlock = { title: string; text: string; ctaLabel: string; ctaHref: string; imageUrl: string; tone: "cocoa" | "petal" | "peach" };
 export type Testimonial = { name: string; city: string; text: string; rating: number };
 export type Instagram = { handle: string; images: { url: string; href: string }[] };
+export type TextureVideoItem = { name: string; href: string; videoUrl: string; posterUrl: string; objectPosition?: string };
+export type TextureVideosBlock = { items: TextureVideoItem[] };
 
 export const HOME_DEFAULTS = {
   hero: {
@@ -32,6 +34,17 @@ export const HOME_DEFAULTS = {
     videoTopRightUrl: "https://videos.pexels.com/video-files/4107785/4107785-sd_540_676_30fps.mp4",
     videoBottomRightUrl: "https://videos.pexels.com/video-files/8154497/8154497-uhd_4096_2160_25fps.mp4",
   } as HeroBlock,
+  texture_videos: {
+    items: [
+      { name: "Straight", href: "/shop?texture=Straight", videoUrl: "https://videos.pexels.com/video-files/10149029/10149029-uhd_3840_2160_24fps.mp4", posterUrl: "https://images.unsplash.com/photo-1589156191108-c762ff4b96ab?auto=format&fit=crop&q=88&w=900", objectPosition: "center 18%" },
+      { name: "Body Wave", href: "/shop?texture=Body%20Wave", videoUrl: "https://videos.pexels.com/video-files/4107785/4107785-sd_540_676_30fps.mp4", posterUrl: "https://images.unsplash.com/photo-1645736279976-59f8fd22720c?auto=format&fit=crop&q=88&w=900", objectPosition: "center 15%" },
+      { name: "Deep Wave", href: "/shop?texture=Deep%20Wave", videoUrl: "https://videos.pexels.com/video-files/8154497/8154497-uhd_4096_2160_25fps.mp4", posterUrl: "https://images.unsplash.com/photo-1593351799227-75df2026356b?auto=format&fit=crop&q=88&w=900", objectPosition: "center" },
+      { name: "Loose Wave", href: "/shop?texture=Loose%20Wave", videoUrl: "https://videos.pexels.com/video-files/10149029/10149029-uhd_3840_2160_24fps.mp4", posterUrl: "https://images.unsplash.com/photo-1527203561188-dae1bc1a417f?auto=format&fit=crop&q=88&w=900", objectPosition: "center 20%" },
+      { name: "Water Wave", href: "/shop?texture=Water%20Wave", videoUrl: "https://videos.pexels.com/video-files/4107785/4107785-sd_540_676_30fps.mp4", posterUrl: "https://images.unsplash.com/photo-1645736279976-59f8fd22720c?auto=format&fit=crop&q=88&w=900", objectPosition: "center" },
+      { name: "Curly", href: "/shop?texture=Curly", videoUrl: "https://videos.pexels.com/video-files/8154497/8154497-uhd_4096_2160_25fps.mp4", posterUrl: "https://images.unsplash.com/photo-1589156191108-c762ff4b96ab?auto=format&fit=crop&q=88&w=900", objectPosition: "center 12%" },
+      { name: "Kinky Curly", href: "/shop?texture=Kinky%20Curly", videoUrl: "https://videos.pexels.com/video-files/4107785/4107785-sd_540_676_30fps.mp4", posterUrl: "https://images.unsplash.com/photo-1593351799227-75df2026356b?auto=format&fit=crop&q=88&w=900", objectPosition: "center 12%" },
+    ],
+  } as TextureVideosBlock,
   banner_1: { title: "Bundle deals", text: "3 bundles + closure sets, priced to save.", ctaLabel: "Shop bundles", ctaHref: "/shop/bundles", imageUrl: "", tone: "cocoa" } as BannerBlock,
   banner_2: { title: "Glueless wigs", text: "Beginner-friendly, pre-plucked, ready to wear.", ctaLabel: "Shop wigs", ctaHref: "/shop/wigs", imageUrl: "", tone: "petal" } as BannerBlock,
   testimonials: { items: [
@@ -48,5 +61,12 @@ export async function getHomeBlocks(locale: string) {
     const exact = rows.find((r) => r.key === key && r.locale === locale) ?? rows.find((r) => r.key === key && r.locale === "en");
     return exact ? { ...fallback, ...(exact.data as object) } : fallback;
   };
-  return { hero: pick("hero", HOME_DEFAULTS.hero), banner_1: pick("banner_1", HOME_DEFAULTS.banner_1), banner_2: pick("banner_2", HOME_DEFAULTS.banner_2), testimonials: pick("testimonials", HOME_DEFAULTS.testimonials), instagram: pick("instagram", HOME_DEFAULTS.instagram) };
+  return {
+    hero: pick("hero", HOME_DEFAULTS.hero),
+    texture_videos: pick("texture_videos", HOME_DEFAULTS.texture_videos),
+    banner_1: pick("banner_1", HOME_DEFAULTS.banner_1),
+    banner_2: pick("banner_2", HOME_DEFAULTS.banner_2),
+    testimonials: pick("testimonials", HOME_DEFAULTS.testimonials),
+    instagram: pick("instagram", HOME_DEFAULTS.instagram),
+  };
 }
