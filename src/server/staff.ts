@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { requireOwner } from "@/lib/auth";
 import { createSupabaseAdmin } from "@/lib/supabase/server";
 import { STAFF_ROLES, type StaffRoleKey } from "@/lib/staff-access";
+import { STAFF_TASK_TEMPLATES } from "@/lib/staff-task-templates";
 
 export type StaffActionState = { error?: string; message?: string };
 
@@ -13,8 +14,22 @@ function cleanRole(value: FormDataEntryValue | null): StaffRoleKey | null {
   return role in STAFF_ROLES ? role : null;
 }
 
+async function assignDefaultResponsibilities(email: string, staffRole: StaffRoleKey, createdBy: string) {
+  const templates = STAFF_TASK_TEMPLATES[staffRole] ?? [];
+  for (const task of templates) {
+    await db.$executeRaw`
+      INSERT INTO "StaffResponsibility" (email, title, description, cadence, "createdBy")
+      SELECT ${email}, ${task.title}, ${task.description}, ${task.cadence}, ${createdBy}
+      WHERE NOT EXISTS (
+        SELECT 1 FROM "StaffResponsibility"
+        WHERE email = ${email} AND title = ${task.title}
+      )
+    `;
+  }
+}
+
 export async function inviteStaff(_prev: StaffActionState, formData: FormData): Promise<StaffActionState> {
-  await requireOwner();
+  const admin = await requireOwner();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const firstName = String(formData.get("firstName") ?? "").trim().slice(0, 60);
   const lastName = String(formData.get("lastName") ?? "").trim().slice(0, 60);
@@ -31,8 +46,6 @@ export async function inviteStaff(_prev: StaffActionState, formData: FormData): 
       data: { first_name: firstName, last_name: lastName, staff_role: staffRole },
     });
 
-    // Un utilisateur peut déjà exister dans Supabase (ex. compte client converti en employé).
-    // Dans ce cas, on configure tout de même son accès interne.
     if (inviteError && !/already|registered|exists/i.test(inviteError.message)) {
       return { error: inviteError.message };
     }
@@ -52,8 +65,11 @@ export async function inviteStaff(_prev: StaffActionState, formData: FormData): 
         "updatedAt" = now()
     `;
 
+    await assignDefaultResponsibilities(email, staffRole, admin.email);
+
     revalidatePath("/admin/team");
-    return { message: inviteError ? "Compte existant configuré comme employé." : "Invitation envoyée et compte employé créé." };
+    revalidatePath("/admin/tasks");
+    return { message: inviteError ? "Compte existant configuré comme employé avec ses responsabilités." : "Invitation envoyée, compte créé et responsabilités attribuées automatiquement." };
   } catch (error) {
     console.error("inviteStaff failed", error);
     return { error: error instanceof Error ? error.message : "Impossible de créer ce compte employé." };
@@ -61,7 +77,7 @@ export async function inviteStaff(_prev: StaffActionState, formData: FormData): 
 }
 
 export async function updateStaffRole(formData: FormData) {
-  await requireOwner();
+  const admin = await requireOwner();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const staffRole = cleanRole(formData.get("staffRole"));
   if (!email || !staffRole) return;
@@ -71,7 +87,11 @@ export async function updateStaffRole(formData: FormData) {
     SET "staffRole" = ${staffRole}, "updatedAt" = now()
     WHERE email = ${email}
   `;
+
+  await assignDefaultResponsibilities(email, staffRole, admin.email);
+
   revalidatePath("/admin/team");
+  revalidatePath("/admin/tasks");
 }
 
 export async function toggleStaffAccess(formData: FormData) {
