@@ -1,6 +1,23 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+const FALLBACK_SUPABASE_URL = "https://vrsvvubawtxhtyvegzqc.supabase.co";
+
+function firstNonEmpty(...values: Array<string | undefined>) {
+  return values.map((value) => value?.trim()).find(Boolean);
+}
+
+function readDefaultKeyFromJson(value: string | undefined) {
+  if (!value) return undefined;
+  try {
+    const parsed = JSON.parse(value) as Record<string, unknown>;
+    const candidate = parsed.default;
+    return typeof candidate === "string" && candidate.trim() ? candidate.trim() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Rafraîchit la session Supabase et protège /admin et /account.
  * Le contrôle du rôle ADMIN se fait côté serveur (requireAdmin) : ici on
@@ -10,20 +27,20 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isProtected = pathname.startsWith("/admin") || pathname.startsWith("/account");
 
-  const supabaseUrl = (
-    process.env.NEXT_PUBLIC_SUPABASE_URL ??
-    process.env.SUPABASE_URL
-  )?.trim();
+  const supabaseUrl = firstNonEmpty(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_URL,
+    FALLBACK_SUPABASE_URL,
+  );
 
-  const supabaseKey = (
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-    process.env.SUPABASE_ANON_KEY ??
-    process.env.SUPABASE_PUBLISHABLE_KEY
-  )?.trim();
+  const supabaseKey = firstNonEmpty(
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    process.env.SUPABASE_PUBLISHABLE_KEY,
+    process.env.SUPABASE_ANON_KEY,
+    readDefaultKeyFromJson(process.env.SUPABASE_PUBLISHABLE_KEYS),
+  );
 
-  // Ne jamais faire tomber tout le site si Supabase n'est pas encore configuré.
-  // Les routes publiques restent accessibles ; les routes privées sont renvoyées au login.
   if (!supabaseUrl || !supabaseKey) {
     if (isProtected) {
       const url = request.nextUrl.clone();
