@@ -19,7 +19,7 @@ const MODEL_IMAGES = [
   "https://images.unsplash.com/photo-1593351799227-75df2026356b?auto=format&fit=crop&q=88&w=1600",
 ];
 
-const HERO_VIDEOS = [
+const HERO_VIDEO_FALLBACKS = [
   "https://videos.pexels.com/video-files/10149029/10149029-uhd_3840_2160_24fps.mp4",
   "https://videos.pexels.com/video-files/4107785/4107785-sd_540_676_30fps.mp4",
   "https://videos.pexels.com/video-files/8154497/8154497-uhd_4096_2160_25fps.mp4",
@@ -51,6 +51,11 @@ export default async function HomePage() {
     ctaLabel: blocks.hero.ctaLabel || t.home.heroCta,
     cta2Label: blocks.hero.cta2Label || t.home.heroCta2,
   };
+  const heroVideos = [
+    hero.videoMainUrl || HERO_VIDEO_FALLBACKS[0],
+    hero.videoTopRightUrl || HERO_VIDEO_FALLBACKS[1],
+    hero.videoBottomRightUrl || HERO_VIDEO_FALLBACKS[2],
+  ];
   const homeCategories = categories.filter((c) => c.showOnHome).slice(0, 4);
   const isFr = locale === "fr";
 
@@ -71,7 +76,7 @@ export default async function HomePage() {
       <section className="overflow-hidden bg-[#f7eee7]">
         <div className="md:hidden">
           <div className="relative min-h-[520px] overflow-hidden bg-cocoa">
-            <HeroVideo src={HERO_VIDEOS[0]} poster={MODEL_IMAGES[0]} objectPosition="center 18%" />
+            <HeroVideo src={heroVideos[0]} poster={hero.imageUrl || MODEL_IMAGES[0]} objectPosition="center 18%" />
             <div className="absolute inset-0 bg-gradient-to-t from-cocoa via-cocoa/30 to-transparent" />
             <div className="absolute inset-x-0 bottom-0 z-10 px-5 pb-7 text-cream">
               <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/12 px-3 py-1.5 text-[9px] font-bold uppercase tracking-[.16em] backdrop-blur-md">
@@ -115,16 +120,16 @@ export default async function HomePage() {
           <div className="relative min-h-[650px] overflow-hidden bg-[#d4aa8a]">
             <div className="absolute inset-0 grid grid-cols-[1.05fr_.95fr] gap-1.5 p-1.5">
               <div className="relative overflow-hidden rounded-l-[2rem] bg-cocoa">
-                <HeroVideo src={HERO_VIDEOS[0]} poster={MODEL_IMAGES[0]} objectPosition="center 18%" />
+                <HeroVideo src={heroVideos[0]} poster={hero.imageUrl || MODEL_IMAGES[0]} objectPosition="center 18%" />
                 <div className="absolute inset-0 bg-gradient-to-t from-cocoa/35 via-transparent to-transparent" />
                 <span className="absolute bottom-6 left-6 rounded-full bg-white/90 px-4 py-2 text-[10px] font-bold uppercase tracking-[.12em] text-cocoa">HD Lace Collection</span>
               </div>
               <div className="grid grid-rows-2 gap-1.5">
                 <div className="relative overflow-hidden rounded-tr-[2rem] bg-cocoa">
-                  <HeroVideo src={HERO_VIDEOS[1]} poster={MODEL_IMAGES[1]} objectPosition="center 20%" />
+                  <HeroVideo src={heroVideos[1]} poster={MODEL_IMAGES[1]} objectPosition="center 20%" />
                 </div>
                 <div className="relative overflow-hidden rounded-br-[2rem] bg-cocoa">
-                  <HeroVideo src={HERO_VIDEOS[2]} poster={MODEL_IMAGES[2]} objectPosition="center" />
+                  <HeroVideo src={heroVideos[2]} poster={MODEL_IMAGES[2]} objectPosition="center" />
                   <div className="absolute inset-0 bg-gradient-to-t from-cocoa/55 via-transparent to-transparent" />
                   <span className="absolute bottom-5 left-5 text-xs font-bold uppercase tracking-[.12em] text-white">Bundles · Texture · Length</span>
                 </div>
