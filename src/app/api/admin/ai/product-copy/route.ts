@@ -49,7 +49,7 @@ For fields outside the requested mode, preserve a supplied current value when av
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: process.env.OPENAI_TEXT_MODEL?.trim() || "gpt-5-mini",
+      model: process.env.OPENAI_TEXT_MODEL?.trim() || "gpt-5.6-luna",
       input: [
         { role: "system", content: [{ type: "input_text", text: instructions }] },
         { role: "user", content: [{ type: "input_text", text: `PRODUCT CONTEXT\n${JSON.stringify(context, null, 2)}` }] },
