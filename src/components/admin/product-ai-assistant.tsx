@@ -3,11 +3,22 @@
 import { useState } from "react";
 import { Loader2, Sparkles, WandSparkles } from "lucide-react";
 
-type Mode = "all" | "identity" | "details" | "usage" | "seo";
-
-type AIResult = Partial<Record<"slug" | "sku" | "shortDesc" | "description" | "howToUse" | "ingredients" | "seoTitle" | "seoDescription", string>> & { notes?: string[] };
-
 const FIELD_KEYS = ["slug", "sku", "shortDesc", "description", "howToUse", "ingredients", "seoTitle", "seoDescription"] as const;
+type FieldKey = (typeof FIELD_KEYS)[number];
+type Mode = "all" | "identity" | "details" | "usage" | "seo" | FieldKey;
+
+type AIResult = Partial<Record<FieldKey, string>> & { notes?: string[] };
+
+const FIELD_ACTIONS: { key: FieldKey; label: string }[] = [
+  { key: "slug", label: "URL slug" },
+  { key: "sku", label: "SKU" },
+  { key: "shortDesc", label: "Short description" },
+  { key: "description", label: "Full description" },
+  { key: "howToUse", label: "How to / install" },
+  { key: "ingredients", label: "Ingredients" },
+  { key: "seoTitle", label: "SEO title" },
+  { key: "seoDescription", label: "Meta description" },
+];
 
 export function ProductAIAssistant() {
   const [language, setLanguage] = useState("English");
@@ -80,7 +91,7 @@ export function ProductAIAssistant() {
       if (!response.ok || !payload.result) throw new Error(payload.error || "AI generation failed.");
       applyResult(form, payload.result, mode);
       setNotes(payload.result.notes ?? []);
-      setMessage("AI suggestions inserted into the product form. Review them before saving.");
+      setMessage(isFieldMode(mode) ? `${fieldLabel(mode)} updated by AI. Review it before saving.` : "AI suggestions inserted into the product form. Review them before saving.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "AI generation failed.");
     } finally {
@@ -93,7 +104,7 @@ export function ProductAIAssistant() {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-2xl">
           <div className="flex items-center gap-2"><span className="grid size-9 place-items-center rounded-xl bg-cocoa text-cream"><Sparkles className="size-4" /></span><div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-flame">MAMAHAIR AI</p><h2 className="text-lg font-semibold text-cocoa">AI Product Assistant</h2></div></div>
-          <p className="mt-3 text-sm leading-6 text-ink-soft">Generate product copy from the facts already entered. AI will not invent ingredients, hair origin, certifications or unsupported product claims.</p>
+          <p className="mt-3 text-sm leading-6 text-ink-soft">Generate or improve one field at a time, or generate a complete product draft. AI uses the facts already entered and avoids unsupported claims.</p>
         </div>
         <label className="text-xs font-semibold text-cocoa">Output language<select value={language} onChange={(e) => setLanguage(e.target.value)} className="mt-1 block min-w-40 rounded-xl border border-sand bg-white px-3 py-2 text-sm font-medium outline-none"><option>English</option><option>French</option><option>Spanish</option><option>Haitian Creole</option></select></label>
       </div>
@@ -109,15 +120,24 @@ export function ProductAIAssistant() {
         </div>
       </div>
 
+      <div className="mt-4 border-t border-sand/70 pt-4">
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-[.14em] text-cocoa/60">Generate one field</p>
+        <div className="flex flex-wrap gap-2">
+          {FIELD_ACTIONS.map((item) => <AIButton key={item.key} label={item.label} mode={item.key} active={loading} onRun={generate} compact />)}
+        </div>
+        <p className="mt-2 text-[11px] leading-5 text-ink-soft">Ingredients are never fabricated: if exact ingredients are not already provided, AI leaves that field unchanged.</p>
+      </div>
+
       {message && <p className="mt-3 rounded-xl border border-sand bg-white px-3 py-2 text-xs leading-5 text-cocoa">{message}</p>}
       {notes.length > 0 && <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900"><strong>AI notes:</strong> {notes.join(" · ")}</div>}
     </section>
   );
 }
 
-function AIButton({ label, mode, active, onRun, primary = false }: { label: string; mode: Mode; active: Mode | null; onRun: (mode: Mode, button: HTMLButtonElement) => void; primary?: boolean }) {
+function AIButton({ label, mode, active, onRun, primary = false, compact = false }: { label: string; mode: Mode; active: Mode | null; onRun: (mode: Mode, button: HTMLButtonElement) => void; primary?: boolean; compact?: boolean }) {
   const busy = active === mode;
-  return <button type="button" disabled={active !== null} onClick={(event) => onRun(mode, event.currentTarget)} className={primary ? "inline-flex items-center gap-2 rounded-xl bg-cocoa px-3.5 py-2.5 text-xs font-semibold text-cream disabled:opacity-50" : "inline-flex items-center gap-2 rounded-xl border border-cocoa/25 bg-white px-3.5 py-2.5 text-xs font-semibold text-cocoa hover:bg-petal/50 disabled:opacity-50"}>{busy ? <Loader2 className="size-3.5 animate-spin" /> : <WandSparkles className="size-3.5" />}{busy ? "Generating…" : label}</button>;
+  const base = compact ? "px-3 py-2 text-[11px]" : "px-3.5 py-2.5 text-xs";
+  return <button type="button" disabled={active !== null} onClick={(event) => onRun(mode, event.currentTarget)} className={primary ? `inline-flex items-center gap-2 rounded-xl bg-cocoa ${base} font-semibold text-cream disabled:opacity-50` : `inline-flex items-center gap-2 rounded-xl border border-cocoa/25 bg-white ${base} font-semibold text-cocoa hover:bg-petal/50 disabled:opacity-50`}>{busy ? <Loader2 className="size-3.5 animate-spin" /> : <WandSparkles className="size-3.5" />}{busy ? "Generating…" : label}</button>;
 }
 
 function findProductForm(button: HTMLButtonElement) {
@@ -137,10 +157,29 @@ function selectedText(form: HTMLFormElement, name: string) {
   return "";
 }
 
+function isFieldMode(mode: Mode): mode is FieldKey {
+  return FIELD_KEYS.includes(mode as FieldKey);
+}
+
+function fieldLabel(key: FieldKey) {
+  return FIELD_ACTIONS.find((item) => item.key === key)?.label ?? key;
+}
+
 function applyResult(form: HTMLFormElement, result: AIResult, mode: Mode) {
-  const allowed = mode === "identity" ? ["slug", "sku"] : mode === "details" ? ["shortDesc", "description"] : mode === "usage" ? ["howToUse", "ingredients"] : mode === "seo" ? ["seoTitle", "seoDescription"] : [...FIELD_KEYS];
+  const allowed: readonly FieldKey[] = isFieldMode(mode)
+    ? [mode]
+    : mode === "identity"
+      ? ["slug", "sku"]
+      : mode === "details"
+        ? ["shortDesc", "description"]
+        : mode === "usage"
+          ? ["howToUse", "ingredients"]
+          : mode === "seo"
+            ? ["seoTitle", "seoDescription"]
+            : FIELD_KEYS;
+
   for (const key of allowed) {
-    const value = result[key as keyof AIResult];
+    const value = result[key];
     if (typeof value !== "string" || !value.trim()) continue;
     const field = form.elements.namedItem(key);
     if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) {
