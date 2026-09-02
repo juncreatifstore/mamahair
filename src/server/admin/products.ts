@@ -55,6 +55,7 @@ function parseProductForm(formData: FormData) {
 }
 
 const issues = (e: { issues: { path: PropertyKey[]; message: string }[] }) => e.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(" · ");
+const INITIAL_IMAGE_KINDS: ImageKind[] = ["GALLERY", "VARIANT", "WORN", "LACE_DETAIL", "TEXTURE", "PACKAGING"];
 
 export async function createProduct(_prev: ActionState, formData: FormData): Promise<ActionState> {
   await requireAdmin();
@@ -62,13 +63,47 @@ export async function createProduct(_prev: ActionState, formData: FormData): Pro
   if (!parsed.success) return { error: issues(parsed.error) };
   const { categoryId, sku, attributes, ...data } = parsed.data;
   if (await db.product.findUnique({ where: { slug: data.slug } })) return { error: "This slug is already used." };
+
+  const initialImages = formData.getAll("initialImages").filter((value): value is File => value instanceof File && value.size > 0).slice(0, 10);
+  const requestedKind = String(formData.get("initialImageKind") ?? "GALLERY") as ImageKind;
+  const initialImageKind: ImageKind = INITIAL_IMAGE_KINDS.includes(requestedKind) ? requestedKind : "GALLERY";
+  const initialImageAlt = String(formData.get("initialImageAlt") ?? "").trim().slice(0, 240);
+
   const product = await db.product.create({
     data: {
       ...data, sku: sku || null, categoryId: categoryId || null, attributes: attributes ?? undefined, publishedAt: data.status === "ACTIVE" ? new Date() : null,
       variants: { create: { sku: sku || `${data.slug.toUpperCase().slice(0, 14)}-DEF`, name: "Default", priceCents: data.basePriceCents, isDefault: true, inventory: { create: { quantity: 0 } } } },
     },
   });
+
+  if (initialImages.length > 0) {
+    const uploadedPaths: (string | null)[] = [];
+    try {
+      for (let index = 0; index < initialImages.length; index++) {
+        const up = await uploadImage("products", product.id, initialImages[index]);
+        if (up.error || !up.url) throw new Error(up.error ?? `Upload failed for image ${index + 1}.`);
+        uploadedPaths.push(up.path ?? null);
+        await db.productImage.create({
+          data: {
+            productId: product.id,
+            url: up.url,
+            path: up.path,
+            alt: initialImageAlt || data.name,
+            kind: index === 0 ? "MAIN" : initialImageKind,
+            sortOrder: index,
+          },
+        });
+      }
+    } catch (error) {
+      await Promise.allSettled(uploadedPaths.map((path) => deleteUpload("products", path)));
+      await db.product.delete({ where: { id: product.id } }).catch((cleanupError) => console.error("Failed to roll back product after media upload error", cleanupError));
+      return { error: error instanceof Error ? `Product photo upload failed: ${error.message}` : "Product photo upload failed." };
+    }
+  }
+
   revalidatePath("/admin/products");
+  revalidatePath("/shop");
+  revalidatePath("/");
   redirect(`/admin/products/${product.id}`);
 }
 
