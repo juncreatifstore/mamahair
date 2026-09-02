@@ -1,13 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Sparkles, WandSparkles } from "lucide-react";
+import { Loader2, Search, Sparkles, WandSparkles } from "lucide-react";
 
 const FIELD_KEYS = ["slug", "sku", "shortDesc", "description", "howToUse", "ingredients", "seoTitle", "seoDescription"] as const;
 type FieldKey = (typeof FIELD_KEYS)[number];
 type Mode = "all" | "identity" | "details" | "usage" | "seo" | FieldKey;
 
-type AIResult = Partial<Record<FieldKey, string>> & { notes?: string[] };
+type AIResult = Partial<Record<FieldKey, string>> & {
+  notes?: string[];
+  focusKeyword?: string;
+  secondaryKeywords?: string[];
+  seoSuggestions?: string[];
+};
 
 const FIELD_ACTIONS: { key: FieldKey; label: string }[] = [
   { key: "slug", label: "URL slug" },
@@ -26,6 +31,7 @@ export function ProductAIAssistant() {
   const [loading, setLoading] = useState<Mode | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [notes, setNotes] = useState<string[]>([]);
+  const [seoInsights, setSeoInsights] = useState<{ focusKeyword: string; secondaryKeywords: string[]; suggestions: string[] } | null>(null);
 
   async function generate(mode: Mode, button: HTMLButtonElement) {
     const form = findProductForm(button);
@@ -81,6 +87,7 @@ export function ProductAIAssistant() {
     setLoading(mode);
     setMessage(null);
     setNotes([]);
+    if (!isSeoMode(mode)) setSeoInsights(null);
     try {
       const response = await fetch("/api/admin/ai/product-copy", {
         method: "POST",
@@ -91,6 +98,13 @@ export function ProductAIAssistant() {
       if (!response.ok || !payload.result) throw new Error(payload.error || "AI generation failed.");
       applyResult(form, payload.result, mode);
       setNotes(payload.result.notes ?? []);
+      if (isSeoMode(mode)) {
+        setSeoInsights({
+          focusKeyword: payload.result.focusKeyword ?? "",
+          secondaryKeywords: payload.result.secondaryKeywords ?? [],
+          suggestions: payload.result.seoSuggestions ?? [],
+        });
+      }
       setMessage(isFieldMode(mode) ? `${fieldLabel(mode)} updated by AI. Review it before saving.` : "AI suggestions inserted into the product form. Review them before saving.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "AI generation failed.");
@@ -128,6 +142,16 @@ export function ProductAIAssistant() {
         <p className="mt-2 text-[11px] leading-5 text-ink-soft">Ingredients are never fabricated: if exact ingredients are not already provided, AI leaves that field unchanged.</p>
       </div>
 
+      {seoInsights && (seoInsights.focusKeyword || seoInsights.secondaryKeywords.length > 0 || seoInsights.suggestions.length > 0) && (
+        <div className="mt-4 rounded-2xl border border-sand bg-white p-4">
+          <div className="flex items-center gap-2"><Search className="size-4 text-flame" /><p className="text-sm font-semibold text-cocoa">AI SEO guidance</p><span className="rounded-full bg-petal px-2 py-1 text-[9px] font-bold uppercase tracking-[.1em] text-cocoa">Advisory</span></div>
+          <p className="mt-1 text-[11px] leading-5 text-ink-soft">These keyword suggestions are editorial guidance only. MAMAHAIR does not store them as product fields and AI does not claim search volume or ranking data.</p>
+          {seoInsights.focusKeyword && <div className="mt-3"><p className="text-[10px] font-bold uppercase tracking-[.12em] text-cocoa/55">Focus keyword</p><span className="mt-1 inline-flex rounded-full bg-cocoa px-3 py-1.5 text-xs font-semibold text-cream">{seoInsights.focusKeyword}</span></div>}
+          {seoInsights.secondaryKeywords.length > 0 && <div className="mt-3"><p className="text-[10px] font-bold uppercase tracking-[.12em] text-cocoa/55">Secondary keywords</p><div className="mt-2 flex flex-wrap gap-2">{seoInsights.secondaryKeywords.map((keyword) => <span key={keyword} className="rounded-full border border-sand bg-petal/45 px-3 py-1.5 text-xs font-medium text-cocoa">{keyword}</span>)}</div></div>}
+          {seoInsights.suggestions.length > 0 && <div className="mt-3"><p className="text-[10px] font-bold uppercase tracking-[.12em] text-cocoa/55">On-page recommendations</p><ul className="mt-2 space-y-1.5 text-xs leading-5 text-ink-soft">{seoInsights.suggestions.map((suggestion) => <li key={suggestion} className="flex gap-2"><span className="mt-2 size-1.5 shrink-0 rounded-full bg-flame" />{suggestion}</li>)}</ul></div>}
+        </div>
+      )}
+
       {message && <p className="mt-3 rounded-xl border border-sand bg-white px-3 py-2 text-xs leading-5 text-cocoa">{message}</p>}
       {notes.length > 0 && <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900"><strong>AI notes:</strong> {notes.join(" · ")}</div>}
     </section>
@@ -159,6 +183,10 @@ function selectedText(form: HTMLFormElement, name: string) {
 
 function isFieldMode(mode: Mode): mode is FieldKey {
   return FIELD_KEYS.includes(mode as FieldKey);
+}
+
+function isSeoMode(mode: Mode) {
+  return mode === "seo" || mode === "all" || mode === "seoTitle" || mode === "seoDescription";
 }
 
 function fieldLabel(key: FieldKey) {
