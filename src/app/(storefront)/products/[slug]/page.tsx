@@ -13,6 +13,7 @@ import { VariantImageProvider } from "@/components/storefront/variant-image-cont
 import { ProductCard } from "@/components/storefront/product-card";
 import { WishlistButton } from "@/components/storefront/wishlist-button";
 import { ReviewForm } from "@/components/storefront/review-form";
+import { ProductReviewList } from "@/components/storefront/product-review-list";
 import { Badge } from "@/components/ui/badge";
 import { CONCERN_LABELS, HAIR_TYPE_LABELS } from "@/lib/utils";
 import { formatCents } from "@/lib/money";
@@ -41,6 +42,16 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   ];
   const features = [[tp.canBleach, p.canBleach], [tp.canDye, p.canDye], [tp.heatSafe, p.heatSafe], [tp.prePlucked, p.prePlucked], [tp.babyHair, p.babyHair], [tp.glueless, p.glueless], [tp.adjustableStrap, p.adjustableStrap]].filter(([, v]) => v === true).map(([l]) => l as string);
   const customerPhotos = p.reviews.flatMap((review) => review.photoUrls.map((url) => ({ url, reviewId: review.id, verified: review.isVerifiedPurchase, name: review.user.firstName ?? "Customer" }))).slice(0, 12);
+  const reviewItems = p.reviews.map((review) => ({
+    id: review.id,
+    rating: review.rating,
+    title: review.title,
+    body: review.body,
+    photoUrls: review.photoUrls,
+    isVerifiedPurchase: review.isVerifiedPurchase,
+    createdAt: review.createdAt.toISOString(),
+    customerName: review.user.firstName ?? "Customer",
+  }));
 
   const variantPrices = p.variants.map((v) => v.priceCents);
   const jsonLd = [
@@ -69,9 +80,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
       <VariantImageProvider>
         <section className="mx-auto grid max-w-7xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[1.08fr_.92fr] lg:gap-14 lg:py-12">
-          <div className="min-w-0">
-            <ProductGallery images={p.images} name={p.name} />
-          </div>
+          <div className="min-w-0"><ProductGallery images={p.images} name={p.name} /></div>
 
           <div className="lg:sticky lg:top-28 lg:self-start">
             <div className="rounded-[2rem] border border-sand/80 bg-white p-5 shadow-[0_20px_60px_rgba(74,27,12,0.06)] sm:p-7">
@@ -79,9 +88,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                 {p.isNew && <Badge tone="honey">New</Badge>}
                 {p.isBestSeller && <Badge tone="cocoa">Best seller</Badge>}
                 {p.category && <Badge>{p.category.name}</Badge>}
-                <span className={`ml-auto inline-flex items-center gap-1.5 text-xs font-semibold ${inStock ? "text-green-700" : "text-red-700"}`}>
-                  <span className={`size-1.5 rounded-full ${inStock ? "bg-green-600" : "bg-red-600"}`} />{inStock ? "In stock" : tp.outOfStock}
-                </span>
+                <span className={`ml-auto inline-flex items-center gap-1.5 text-xs font-semibold ${inStock ? "text-green-700" : "text-red-700"}`}><span className={`size-1.5 rounded-full ${inStock ? "bg-green-600" : "bg-red-600"}`} />{inStock ? "In stock" : tp.outOfStock}</span>
               </div>
 
               <h1 className="mt-5 text-[2.4rem] leading-[1.02] text-cocoa sm:text-5xl">{p.name}</h1>
@@ -106,11 +113,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                 <TrustPill icon={Truck} title="Shipping ready" text="Tracked delivery" />
               </div>
 
-              {features.length > 0 && (
-                <div className="mt-6 flex flex-wrap gap-2">
-                  {features.map((f) => <span key={f} className="inline-flex items-center gap-1.5 rounded-full bg-petal px-3 py-2 text-xs font-medium text-cocoa"><Check className="size-3.5 text-flame" />{f}</span>)}
-                </div>
-              )}
+              {features.length > 0 && <div className="mt-6 flex flex-wrap gap-2">{features.map((f) => <span key={f} className="inline-flex items-center gap-1.5 rounded-full bg-petal px-3 py-2 text-xs font-medium text-cocoa"><Check className="size-3.5 text-flame" />{f}</span>)}</div>}
 
               {(p.hairTypes.length > 0 || p.concerns.length > 0) && (
                 <div className="mt-6 rounded-2xl bg-cream p-4">
@@ -170,10 +173,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
       <section id="reviews" className="mx-auto mt-16 scroll-mt-32 max-w-7xl px-4 sm:px-6 md:mt-20">
         <div className="mb-8 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-flame">Customer reviews</p>
-            <h2 className="mt-2 text-4xl text-cocoa">Real feedback from MAMAHAIR customers</h2>
-          </div>
+          <div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-flame">Customer reviews</p><h2 className="mt-2 text-4xl text-cocoa">Real feedback from MAMAHAIR customers</h2></div>
           {p.ratingCount > 0 && (
             <div className="rounded-[1.4rem] border border-sand bg-white px-5 py-4 shadow-[0_10px_25px_rgba(74,27,12,.035)]">
               <div className="flex items-end gap-2"><span className="text-4xl font-bold leading-none text-cocoa">{p.ratingAvg?.toFixed(1)}</span><span className="pb-1 text-sm text-ink-soft">/ 5</span></div>
@@ -185,10 +185,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
         {customerPhotos.length > 0 && (
           <div className="mb-8 rounded-[1.75rem] border border-sand/70 bg-[#fbf8f5] p-4 sm:p-5">
-            <div className="flex items-center justify-between gap-3">
-              <div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-flame">Customer photos</p><p className="mt-1 text-sm text-ink-soft">Photos attached to approved product reviews.</p></div>
-              <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-cocoa">{customerPhotos.length}</span>
-            </div>
+            <div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-flame">Customer photos</p><p className="mt-1 text-sm text-ink-soft">Photos attached to approved product reviews.</p></div><span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-cocoa">{customerPhotos.length}</span></div>
             <div className="no-scrollbar -mx-1 mt-4 flex gap-2 overflow-x-auto px-1 pb-1 sm:grid sm:grid-cols-6 lg:grid-cols-8">
               {customerPhotos.map((photo, index) => (
                 <a key={`${photo.reviewId}-${photo.url}-${index}`} href={`#review-${photo.reviewId}`} className="group relative aspect-square w-28 shrink-0 overflow-hidden rounded-2xl bg-petal ring-1 ring-sand/70 sm:w-auto">
@@ -201,21 +198,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         )}
 
         <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
-          <div>
-            {p.reviews.length === 0 ? <div className="rounded-[1.75rem] border border-dashed border-sand bg-white p-10 text-center"><p className="display text-2xl text-cocoa">No reviews yet</p><p className="mt-2 text-sm text-ink-soft">Be the first to share your experience.</p></div> : (
-              <div className="grid gap-4 sm:grid-cols-2">
-                {p.reviews.map((r) => (
-                  <article id={`review-${r.id}`} key={r.id} className="scroll-mt-32 rounded-[1.5rem] border border-sand/70 bg-white p-5 shadow-[0_10px_25px_rgba(74,27,12,0.035)] sm:p-6">
-                    <div className="flex flex-wrap items-center justify-between gap-3"><span className="text-sm tracking-[0.1em] text-flame">{"★".repeat(r.rating)}<span className="text-sand">{"★".repeat(5 - r.rating)}</span></span>{r.isVerifiedPurchase && <Badge tone="green">{tp.verified}</Badge>}</div>
-                    {r.title && <p className="mt-4 text-base font-semibold text-cocoa">{r.title}</p>}
-                    {r.body && <p className="mt-2 text-sm leading-7 text-ink-soft">{r.body}</p>}
-                    {r.photoUrls.length > 0 && <div className="mt-4 grid grid-cols-3 gap-2">{r.photoUrls.slice(0, 6).map((u) => <div key={u} className="relative aspect-square overflow-hidden rounded-xl bg-petal ring-1 ring-sand/70"><Image src={u} alt="Customer review photo" fill sizes="160px" className="object-cover" /></div>)}</div>}
-                    <div className="mt-5 flex items-center justify-between gap-3 border-t border-sand pt-3"><p className="text-xs font-semibold uppercase tracking-[0.08em] text-ink-soft">{r.user.firstName ?? "Customer"}</p><time className="text-[10px] text-ink-soft" dateTime={r.createdAt.toISOString()}>{r.createdAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</time></div>
-                  </article>
-                ))}
-              </div>
-            )}
-          </div>
+          <div>{p.reviews.length === 0 ? <div className="rounded-[1.75rem] border border-dashed border-sand bg-white p-10 text-center"><p className="display text-2xl text-cocoa">No reviews yet</p><p className="mt-2 text-sm text-ink-soft">Be the first to share your experience.</p></div> : <ProductReviewList reviews={reviewItems} verifiedLabel={tp.verified} />}</div>
           <div className="h-fit rounded-[1.75rem] border border-sand/70 bg-white p-5 sm:p-6 lg:sticky lg:top-32"><ReviewForm productId={p.id} title={tp.writeReview} loggedIn={!!user} /></div>
         </div>
       </section>
@@ -239,12 +222,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   try {
     const p = await getProductBySlug(slug);
     if (!p) return { title: "Product", robots: { index: false, follow: false } };
-
     const title = p.seoTitle || p.name;
     const description = p.seoDescription || p.shortDesc || p.description?.slice(0, 160) || undefined;
     const image = p.images[0]?.url;
     const canonical = `/products/${p.slug}`;
-
     return {
       title,
       description,
