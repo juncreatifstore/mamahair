@@ -10,6 +10,7 @@ import { SearchBox } from "./search-box";
 import { LocaleCurrencySwitcher } from "./locale-switcher";
 import { MobileMenu } from "./mobile-menu";
 import { DesktopMegaMenu } from "./desktop-mega-menu";
+import { AnnouncementBar } from "./announcement-bar";
 
 export async function Header() {
   const [user, cart, b, t, locale, currency, categories] = await Promise.all([
@@ -45,9 +46,12 @@ export async function Header() {
   return (
     <header className="sticky top-0 z-40 bg-cream">
       {b.announcementEnabled && b.announcement && (
-        <div className="bg-cocoa-deep px-3 py-2 text-center text-[10px] font-semibold uppercase tracking-[0.16em] text-cream sm:px-4 sm:text-[11px] lg:text-xs">
-          {b.announcement}
-        </div>
+        <AnnouncementBar
+          text={b.announcement}
+          href={b.announcementLink || undefined}
+          endsAt={b.announcementEndsAt || undefined}
+          countdown={b.announcementCountdownEnabled}
+        />
       )}
 
       <div className="border-b border-sand/80 bg-cream/95 shadow-[0_8px_28px_rgba(74,27,12,0.045)] backdrop-blur-xl">
