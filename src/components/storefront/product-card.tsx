@@ -70,15 +70,16 @@ export function ProductCard({ p, saved, labels }: { p: ProductCardData; saved?: 
             {p.name}
           </Link>
 
+          {(p.salesCount > 0 || p.ratingCount > 0) && (
+            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[9px] font-medium text-ink-soft sm:text-[10px]">
+              {p.salesCount > 0 && <span className="rounded-full bg-petal px-2 py-1 text-cocoa">{p.salesCount.toLocaleString()} sold</span>}
+              {p.ratingCount > 0 && <span className="inline-flex items-center gap-1"><Star className="size-3 fill-current text-flame" strokeWidth={1.4} />{p.ratingAvg?.toFixed(1)} <span className="opacity-60">({p.ratingCount})</span></span>}
+            </div>
+          )}
+
           <div className="mt-2.5 flex flex-wrap items-end gap-x-2 gap-y-1 border-t border-sand/70 pt-2.5 sm:mt-3 sm:pt-3">
             <span className="text-[15px] font-bold text-cocoa sm:text-base">{formatCents(p.basePriceCents, p.currency)}</span>
             {onSale && <span className="pb-0.5 text-[10px] text-ink-soft line-through sm:text-xs">{formatCents(p.compareAtCents!, p.currency)}</span>}
-            {p.ratingCount > 0 && (
-              <span className="ml-auto inline-flex items-center gap-1 pb-0.5 text-[10px] font-medium text-ink-soft sm:text-[11px]">
-                <Star className="size-3 fill-current text-flame" strokeWidth={1.4} />
-                {p.ratingAvg?.toFixed(1)} <span className="opacity-60">({p.ratingCount})</span>
-              </span>
-            )}
           </div>
         </div>
       </div>
