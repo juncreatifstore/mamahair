@@ -6,7 +6,7 @@ import { Check, ChevronRight, ShieldCheck, Sparkles, Truck } from "lucide-react"
 import { getProductBySlug, getRelatedProducts } from "@/server/products";
 import { getWishlistProductIds } from "@/server/wishlist";
 import { getCurrentUser } from "@/lib/auth";
-import { getT } from "@/i18n/server";
+import { getLocale, getT } from "@/i18n/server";
 import { AddToCart } from "@/components/storefront/add-to-cart";
 import { ProductGallery } from "@/components/storefront/product-gallery";
 import { VariantImageProvider } from "@/components/storefront/variant-image-context";
@@ -14,6 +14,7 @@ import { ProductCard } from "@/components/storefront/product-card";
 import { WishlistButton } from "@/components/storefront/wishlist-button";
 import { ReviewForm } from "@/components/storefront/review-form";
 import { ProductReviewList } from "@/components/storefront/product-review-list";
+import { RecentlyViewed } from "@/components/storefront/recently-viewed";
 import { Badge } from "@/components/ui/badge";
 import { CONCERN_LABELS, HAIR_TYPE_LABELS } from "@/lib/utils";
 import { formatCents } from "@/lib/money";
@@ -30,9 +31,16 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const { slug } = await params;
   const p = await getProductBySlug(slug);
   if (!p) notFound();
-  const [t, user, saved, related] = await Promise.all([getT(), getCurrentUser(), getWishlistProductIds(), getRelatedProducts(p)]);
+  const [t, locale, user, saved, related] = await Promise.all([getT(), getLocale(), getCurrentUser(), getWishlistProductIds(), getRelatedProducts(p)]);
   const tp = t.product;
   const inStock = p.variants.some((v) => (v.inventory?.quantity ?? 0) - (v.inventory?.reserved ?? 0) > 0);
+  const recentlyViewedCopy: Record<string, { eyebrow: string; title: string }> = {
+    en: { eyebrow: "Your browsing history", title: "Recently viewed" },
+    fr: { eyebrow: "Votre historique", title: "Consultés récemment" },
+    es: { eyebrow: "Tu historial", title: "Vistos recientemente" },
+    ht: { eyebrow: "Sa ou te gade", title: "Ou te gade dènyèman" },
+  };
+  const rvCopy = recentlyViewedCopy[locale] ?? recentlyViewedCopy.en;
 
   const specs: [string, string | null | undefined][] = [
     [tp.material, p.hairMaterial], [tp.origin, p.hairOrigin], [tp.grade, p.hairGrade], [tp.wigType, p.wigType], [tp.capSize, p.capSize],
@@ -54,6 +62,14 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   }));
 
   const variantPrices = p.variants.map((v) => v.priceCents);
+  const recentlyViewedProduct = {
+    id: p.id,
+    slug: p.slug,
+    name: p.name,
+    imageUrl: p.images[0]?.url ?? null,
+    priceCents: variantPrices.length ? Math.min(...variantPrices) : p.basePriceCents,
+    currency: p.currency,
+  };
   const jsonLd = [
     {
       "@context": "https://schema.org", "@type": "Product", name: p.name, description: p.shortDesc ?? undefined, sku: p.sku ?? p.variants[0]?.sku, image: p.images.map((i) => i.url), brand: p.brand ? { "@type": "Brand", name: p.brand } : undefined,
@@ -209,6 +225,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">{related.map((r) => <ProductCard key={r.id} p={r} saved={saved.includes(r.id)} labels={{ save: tp.saveWishlist, saved: tp.savedWishlist }} />)}</div>
         </section>
       )}
+
+      <RecentlyViewed current={recentlyViewedProduct} eyebrow={rvCopy.eyebrow} title={rvCopy.title} />
     </div>
   );
 }
