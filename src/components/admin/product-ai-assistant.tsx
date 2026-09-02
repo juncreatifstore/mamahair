@@ -17,8 +17,11 @@ export function ProductAIAssistant() {
   const [notes, setNotes] = useState<string[]>([]);
 
   async function generate(mode: Mode, button: HTMLButtonElement) {
-    const form = button.closest("form");
-    if (!form) return;
+    const form = findProductForm(button);
+    if (!form) {
+      setMessage("Product form not found.");
+      return;
+    }
 
     const data = new FormData(form);
     const context: Record<string, unknown> = {
@@ -115,6 +118,12 @@ export function ProductAIAssistant() {
 function AIButton({ label, mode, active, onRun, primary = false }: { label: string; mode: Mode; active: Mode | null; onRun: (mode: Mode, button: HTMLButtonElement) => void; primary?: boolean }) {
   const busy = active === mode;
   return <button type="button" disabled={active !== null} onClick={(event) => onRun(mode, event.currentTarget)} className={primary ? "inline-flex items-center gap-2 rounded-xl bg-cocoa px-3.5 py-2.5 text-xs font-semibold text-cream disabled:opacity-50" : "inline-flex items-center gap-2 rounded-xl border border-cocoa/25 bg-white px-3.5 py-2.5 text-xs font-semibold text-cocoa hover:bg-petal/50 disabled:opacity-50"}>{busy ? <Loader2 className="size-3.5 animate-spin" /> : <WandSparkles className="size-3.5" />}{busy ? "Generating…" : label}</button>;
+}
+
+function findProductForm(button: HTMLButtonElement) {
+  const parent = button.closest("form");
+  if (parent instanceof HTMLFormElement && parent.elements.namedItem("name") && parent.elements.namedItem("productType")) return parent;
+  return Array.from(document.forms).find((form) => form.elements.namedItem("name") && form.elements.namedItem("productType")) ?? null;
 }
 
 function text(data: FormData, key: string) {
