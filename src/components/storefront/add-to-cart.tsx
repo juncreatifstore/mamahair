@@ -14,8 +14,9 @@ type V = { id: string; name: string; sku: string; priceCents: number; compareAtC
 
 export function AddToCart({ variants, currency, labels, onVariantChange }: { variants: V[]; currency: string; labels: { add: string; added: string; out: string; choose: string; onlyLeft: string }; onVariantChange?: (v: V) => void }) {
   const opts = (v: V) => (v.options ?? {}) as Record<string, string>;
+  const inStock = (v: V) => (v.inventory?.quantity ?? 0) - (v.inventory?.reserved ?? 0) > 0;
   const axes = useMemo(() => OPTION_KEYS.filter((k) => variants.some((v) => opts(v)[k])).map((k) => ({ key: k, values: [...new Set(variants.map((v) => opts(v)[k]).filter(Boolean))] })), [variants]);
-  const initial = variants.find((v) => v.isDefault) ?? variants[0];
+  const initial = variants.find((v) => v.isDefault && inStock(v)) ?? variants.find(inStock) ?? variants.find((v) => v.isDefault) ?? variants[0];
   const [sel, setSel] = useState<Record<string, string>>(initial ? opts(initial) : {});
   const [qty, setQty] = useState(1);
   const [msg, setMsg] = useState<string | null>(null);
@@ -23,19 +24,13 @@ export function AddToCart({ variants, currency, labels, onVariantChange }: { var
   const router = useRouter();
   const variantImage = useVariantImage();
 
-  const inStock = (v: V) => (v.inventory?.quantity ?? 0) - (v.inventory?.reserved ?? 0) > 0;
   const match = axes.length === 0 ? initial : variants.find((v) => axes.every((a) => opts(v)[a.key] === sel[a.key]));
   const available = match ? Math.max(0, (match.inventory?.quantity ?? 0) - (match.inventory?.reserved ?? 0)) : 0;
   const discount = match?.compareAtCents && match.compareAtCents > match.priceCents ? Math.round((1 - match.priceCents / match.compareAtCents) * 100) : 0;
 
-  const candidatesFor = (key: OptionKey, value: string) => variants.filter((v) => {
-    const o = opts(v);
-    if (o[key] !== value) return false;
-    return axes.every((a) => a.key === key || !sel[a.key] || o[a.key] === sel[a.key]);
-  });
-
-  const optionAvailable = (key: OptionKey, value: string) => candidatesFor(key, value).some(inStock);
-  const optionImage = (key: OptionKey, value: string) => candidatesFor(key, value).find((v) => v.image?.url)?.image?.url ?? variants.find((v) => opts(v)[key] === value && v.image?.url)?.image?.url ?? null;
+  const variantsForValue = (key: OptionKey, value: string) => variants.filter((v) => opts(v)[key] === value);
+  const optionAvailable = (key: OptionKey, value: string) => variantsForValue(key, value).some(inStock);
+  const optionImage = (key: OptionKey, value: string) => variantsForValue(key, value).find((v) => inStock(v) && v.image?.url)?.image?.url ?? variantsForValue(key, value).find((v) => v.image?.url)?.image?.url ?? null;
 
   const pick = (key: OptionKey, value: string) => {
     if (!optionAvailable(key, value)) return;
