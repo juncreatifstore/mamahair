@@ -4,7 +4,12 @@ import { requireAdmin } from "@/lib/auth";
 const OUTPUT_KEYS = ["slug", "sku", "shortDesc", "description", "howToUse", "ingredients", "seoTitle", "seoDescription"] as const;
 const MODES = ["all", "identity", "details", "usage", "seo", ...OUTPUT_KEYS] as const;
 
-type ProductAIResult = Partial<Record<(typeof OUTPUT_KEYS)[number], string>> & { notes?: string[] };
+type ProductAIResult = Partial<Record<(typeof OUTPUT_KEYS)[number], string>> & {
+  notes?: string[];
+  focusKeyword?: string;
+  secondaryKeywords?: string[];
+  seoSuggestions?: string[];
+};
 
 export async function POST(request: Request) {
   await requireAdmin();
@@ -22,6 +27,7 @@ export async function POST(request: Request) {
   const mode = MODES.includes((body.mode ?? "") as (typeof MODES)[number]) ? body.mode! : "all";
   const language = body.language || "English";
   const context = sanitizeContext(body.context);
+  const includeSeoInsights = mode === "seo" || mode === "all" || mode === "seoTitle" || mode === "seoDescription";
 
   const instructions = `You are MAMAHAIR's ecommerce product copy assistant. Produce accurate, premium, conversion-focused catalog copy in ${language}.
 
@@ -34,14 +40,19 @@ Rules:
 - shortDesc: <= 180 characters.
 - seoTitle: <= 65 characters.
 - seoDescription: <= 155 characters.
+- SEO keywords must describe the actual product facts supplied. Do not invent search volume, rankings, trends or competitor claims.
+- focusKeyword should be one concise buyer-intent phrase.
+- secondaryKeywords should contain at most 6 concise phrases.
+- seoSuggestions should contain at most 5 practical on-page recommendations based only on the supplied product content.
 - Keep wording premium and specific, not exaggerated.
 - Return ONLY valid JSON. No markdown and no prose outside JSON.
 
 Return this exact object shape:
-{"slug":"","sku":"","shortDesc":"","description":"","howToUse":"","ingredients":"","seoTitle":"","seoDescription":"","notes":[]}
+{"slug":"","sku":"","shortDesc":"","description":"","howToUse":"","ingredients":"","seoTitle":"","seoDescription":"","focusKeyword":"","secondaryKeywords":[],"seoSuggestions":[],"notes":[]}
 
 MODE: ${mode}
-If MODE is one exact field name, generate ONLY that field and return empty strings for the others. If MODE is a group, generate only fields in that group. For fields outside the requested mode, return an empty string.`;
+If MODE is one exact field name, generate ONLY that field and return empty strings for the others. If MODE is a group, generate only fields in that group. For fields outside the requested mode, return an empty string.
+${includeSeoInsights ? "Also return focusKeyword, secondaryKeywords and seoSuggestions for the SEO work." : "Return focusKeyword as an empty string and both SEO arrays empty."}`;
 
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
@@ -55,7 +66,7 @@ If MODE is one exact field name, generate ONLY that field and return empty strin
         { role: "system", content: [{ type: "input_text", text: instructions }] },
         { role: "user", content: [{ type: "input_text", text: `PRODUCT CONTEXT\n${JSON.stringify(context, null, 2)}` }] },
       ],
-      max_output_tokens: 1800,
+      max_output_tokens: 2200,
     }),
   });
 
@@ -72,6 +83,9 @@ If MODE is one exact field name, generate ONLY that field and return empty strin
     const parsed = JSON.parse(stripCodeFence(raw)) as ProductAIResult;
     const result: ProductAIResult = {};
     for (const key of OUTPUT_KEYS) result[key] = typeof parsed[key] === "string" ? parsed[key]!.trim() : "";
+    result.focusKeyword = typeof parsed.focusKeyword === "string" ? parsed.focusKeyword.trim() : "";
+    result.secondaryKeywords = Array.isArray(parsed.secondaryKeywords) ? parsed.secondaryKeywords.map(String).map((v) => v.trim()).filter(Boolean).slice(0, 6) : [];
+    result.seoSuggestions = Array.isArray(parsed.seoSuggestions) ? parsed.seoSuggestions.map(String).map((v) => v.trim()).filter(Boolean).slice(0, 5) : [];
     result.notes = Array.isArray(parsed.notes) ? parsed.notes.map(String).slice(0, 8) : [];
     return NextResponse.json({ result });
   } catch {
