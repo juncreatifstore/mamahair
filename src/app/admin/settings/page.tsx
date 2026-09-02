@@ -7,7 +7,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { SettingsTabs } from "@/components/admin/settings-tabs";
 
 const SECTIONS: { key: SettingSection; title: string; help?: string }[] = [
-  { key: "general", title: "General", help: "Company and store names, tagline, announcement bar." },
+  { key: "general", title: "General", help: "Company and store names, tagline, announcement bar and optional promotional countdown." },
   { key: "branding", title: "Branding", help: "Logos, favicon and brand colors used across the site and emails." },
   { key: "contact", title: "Contact", help: "Shown in the footer and emails." },
   { key: "social", title: "Social", help: "Full URLs. Empty fields are hidden." },
@@ -22,7 +22,7 @@ const SECTIONS: { key: SettingSection; title: string; help?: string }[] = [
 ];
 
 const LABELS: Record<string, string> = {
-  companyName: "Company name", storeName: "Store name (short)", tagline: "Tagline", announcement: "Announcement bar text", announcementEnabled: "Show announcement bar",
+  companyName: "Company name", storeName: "Store name (short)", tagline: "Tagline", announcement: "Announcement bar text", announcementEnabled: "Show announcement bar", announcementLink: "Announcement link", announcementEndsAt: "Promotion end date/time", announcementCountdownEnabled: "Show countdown timer",
   logoUrl: "Main logo URL", logoLightUrl: "Light logo URL (dark backgrounds)", logoDarkUrl: "Dark logo URL", faviconUrl: "Favicon URL", primaryColor: "Primary color", accentColor: "Accent color",
   email: "Email", phone: "Phone", whatsapp: "WhatsApp number (with country code)", addressLine: "Address", city: "City", region: "State / region", postalCode: "Postal code", country: "Country (ISO)",
   instagram: "Instagram", facebook: "Facebook", tiktok: "TikTok", youtube: "YouTube", pinterest: "Pinterest",
@@ -63,8 +63,10 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             if (typeof def === "number") return <Field key={k} label={label}><Input name={k} type="number" min={0} defaultValue={String(v ?? def)} /></Field>;
             if (Array.isArray(def)) return <Field key={k} label={label} hint="Comma-separated"><Input name={k} defaultValue={(v as string[]).join(", ")} /></Field>;
             if (current.key === "policies" || k === "defaultDescription") return <Field key={k} label={label}><Textarea name={k} defaultValue={String(v ?? "")} className="min-h-40" /></Field>;
+            if (k === "announcementEndsAt") return <Field key={k} label={label} hint="Leave empty for no end date"><Input name={k} type="datetime-local" defaultValue={String(v ?? "")} /></Field>;
             return <Field key={k} label={label}><Input name={k} defaultValue={String(v ?? "")} /></Field>;
           })}
+          {current.key === "general" && <p className="rounded-xl bg-petal px-4 py-3 text-xs leading-5 text-ink-soft">For a timed sale, set the promotion end date and enable the countdown. When the timer reaches zero, the announcement bar automatically disappears.</p>}
           {current.key === "rewards" && <p className="rounded-xl bg-petal px-4 py-3 text-xs leading-5 text-ink-soft">Example: 100 points per 1% means 500 points = 5% off. The maximum discount prevents excessive point use on one order.</p>}
           <SubmitButton>Save {current.title.toLowerCase()}</SubmitButton>
         </form>
