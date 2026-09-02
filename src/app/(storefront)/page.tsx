@@ -3,7 +3,7 @@ import { ArrowRight, Camera, Headphones, Heart, MessageCircle, RotateCcw, Shield
 import { getBestSellers, getNewArrivals, listCategories } from "@/server/products";
 import { getWishlistProductIds } from "@/server/wishlist";
 import { getHomeBlocks } from "@/lib/home-blocks";
-import { getBrand } from "@/lib/settings";
+import { db } from "@/lib/db";
 import { getT, getLocale, getCurrency } from "@/i18n/server";
 import { ProductCard } from "@/components/storefront/product-card";
 import { NewsletterForm } from "@/components/storefront/newsletter-form";
@@ -26,20 +26,30 @@ const HERO_VIDEO_FALLBACKS = [
   "https://videos.pexels.com/video-files/8154497/8154497-uhd_4096_2160_25fps.mp4",
 ];
 
-const TESTIMONIALS = [
-  { name: "Ashley M.", text: "The lace melts beautifully and the hair stays soft. It looks even better in person." },
-  { name: "Nadia K.", text: "I finally found a texture that blends naturally. The density is perfect and the shipping was fast." },
-  { name: "Samantha J.", text: "Premium packaging, beautiful hair and excellent support. I already ordered my second unit." },
-];
-
 export default async function HomePage() {
-  const [t, locale, currency, b] = await Promise.all([getT(), getLocale(), getCurrency(), getBrand()]);
-  const [best, fresh, categories, blocks, saved] = await Promise.all([
+  const [t, locale, currency] = await Promise.all([getT(), getLocale(), getCurrency()]);
+  const [best, fresh, categories, blocks, saved, realReviews, reviewStats] = await Promise.all([
     getBestSellers(8, currency),
     getNewArrivals(8, currency),
     listCategories(),
     getHomeBlocks(locale),
     getWishlistProductIds(),
+    db.review.findMany({
+      where: { isApproved: true, body: { not: null } },
+      orderBy: { createdAt: "desc" },
+      take: 3,
+      select: {
+        id: true,
+        rating: true,
+        title: true,
+        body: true,
+        isVerifiedPurchase: true,
+        createdAt: true,
+        user: { select: { firstName: true, lastName: true } },
+        product: { select: { name: true, slug: true } },
+      },
+    }),
+    db.review.aggregate({ where: { isApproved: true }, _avg: { rating: true }, _count: { _all: true } }),
   ]);
 
   const wl = { save: t.product.saveWishlist, saved: t.product.savedWishlist };
@@ -57,6 +67,8 @@ export default async function HomePage() {
   ];
   const homeCategories = categories.filter((c) => c.showOnHome).slice(0, 4);
   const isFr = locale === "fr";
+  const reviewCount = reviewStats._count._all;
+  const reviewAverage = reviewStats._avg.rating ?? 0;
 
   const trust = [
     { icon: Truck, title: isFr ? "Livraison rapide" : "Fast shipping", text: isFr ? "Partout dans le monde" : "Worldwide delivery" },
@@ -110,7 +122,7 @@ export default async function HomePage() {
               </div>
               <div className="mt-10 grid max-w-md grid-cols-3 gap-4 border-t border-cocoa/10 pt-6 text-center">
                 <div><div className="text-lg font-bold text-cocoa">100%</div><div className="mt-1 text-[10px] uppercase tracking-[.1em] text-ink-soft">Human Hair</div></div>
-                <div className="border-x border-cocoa/10"><div className="text-lg font-bold text-cocoa">4.9★</div><div className="mt-1 text-[10px] uppercase tracking-[.1em] text-ink-soft">Loved</div></div>
+                <div className="border-x border-cocoa/10"><div className="text-lg font-bold text-cocoa">{reviewCount > 0 ? `${reviewAverage.toFixed(1)}★` : "New"}</div><div className="mt-1 text-[10px] uppercase tracking-[.1em] text-ink-soft">{reviewCount > 0 ? `${reviewCount} reviews` : "Community"}</div></div>
                 <div><div className="text-lg font-bold text-cocoa">Secure</div><div className="mt-1 text-[10px] uppercase tracking-[.1em] text-ink-soft">Checkout</div></div>
               </div>
             </div>
@@ -236,7 +248,7 @@ export default async function HomePage() {
       <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:py-16">
         <SectionHeading eyebrow={isFr ? "Acheter par texture" : "Shop by texture"} title={t.home.byTexture} />
         <p className="-mt-4 mb-6 max-w-2xl text-sm leading-6 text-ink-soft sm:-mt-5 sm:mb-8">
-          {isFr ? "Voyez le mouvement, la brillance et le tombé de chaque texture sur des modèles noirs avant de choisir vos extensions." : "See the movement, shine and finish of each texture on Black models before choosing your extensions."}
+          {isFr ? "Découvrez le mouvement, la brillance et le tombé des textures proposées avant de choisir vos extensions." : "See the movement, shine and finish of the available textures before choosing your extensions."}
         </p>
         <div className="no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-4 sm:px-0 lg:grid-cols-4 xl:grid-cols-7">
           {blocks.texture_videos.items.map((item) => <TextureVideoCard key={item.name} item={item} />)}
@@ -254,25 +266,38 @@ export default async function HomePage() {
 
       <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:py-16">
         <div className="mb-7 text-center">
-          <p className="text-[9px] font-bold uppercase tracking-[.18em] text-flame sm:text-[10px]">{isFr ? "Elles aiment MAMAHAIR" : "Loved by our community"}</p>
-          <h2 className="mt-2 text-3xl text-cocoa sm:text-4xl">{isFr ? "De vrais looks. De vrais avis." : "Real hair. Real confidence."}</h2>
+          <p className="text-[9px] font-bold uppercase tracking-[.18em] text-flame sm:text-[10px]">{isFr ? "Avis clients" : "Customer reviews"}</p>
+          <h2 className="mt-2 text-3xl text-cocoa sm:text-4xl">{isFr ? "De vrais achats. De vrais avis." : "Real purchases. Real reviews."}</h2>
+          {reviewCount > 0 && <p className="mt-2 text-sm text-ink-soft">{reviewAverage.toFixed(1)} / 5 · {reviewCount} {reviewCount === 1 ? "review" : "reviews"}</p>}
         </div>
-        <div className="grid gap-3 md:grid-cols-3 md:gap-5">
-          {TESTIMONIALS.map((review) => (
-            <article key={review.name} className="rounded-[1.35rem] border border-sand bg-white p-5 shadow-[0_12px_30px_rgba(74,27,12,.04)] sm:p-6">
-              <div className="flex gap-1 text-flame">{Array.from({ length: 5 }).map((_, i) => <Star key={i} className="size-3.5 fill-current" />)}</div>
-              <p className="mt-4 text-sm leading-6 text-ink">“{review.text}”</p>
-              <div className="mt-5 flex items-center justify-between border-t border-sand/70 pt-4"><span className="text-xs font-bold text-cocoa">{review.name}</span><span className="text-[9px] font-bold uppercase tracking-[.1em] text-ink-soft">Verified buyer</span></div>
-            </article>
-          ))}
-        </div>
+        {realReviews.length > 0 ? (
+          <div className="grid gap-3 md:grid-cols-3 md:gap-5">
+            {realReviews.map((review) => {
+              const customerName = review.user.firstName ? `${review.user.firstName}${review.user.lastName ? ` ${review.user.lastName.charAt(0)}.` : ""}` : "MAMAHAIR customer";
+              return (
+                <article key={review.id} className="rounded-[1.35rem] border border-sand bg-white p-5 shadow-[0_12px_30px_rgba(74,27,12,.04)] sm:p-6">
+                  <div className="flex gap-1 text-flame">{Array.from({ length: 5 }).map((_, i) => <Star key={i} className={`size-3.5 ${i < review.rating ? "fill-current" : "opacity-25"}`} />)}</div>
+                  {review.title && <p className="mt-4 text-sm font-bold text-cocoa">{review.title}</p>}
+                  <p className="mt-2 text-sm leading-6 text-ink">“{review.body}”</p>
+                  <Link href={`/products/${review.product.slug}`} className="mt-4 inline-flex text-[11px] font-semibold text-flame hover:underline">{review.product.name}</Link>
+                  <div className="mt-5 flex items-center justify-between gap-3 border-t border-sand/70 pt-4"><span className="text-xs font-bold text-cocoa">{customerName}</span>{review.isVerifiedPurchase && <span className="text-[9px] font-bold uppercase tracking-[.1em] text-ink-soft">Verified purchase</span>}</div>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="rounded-[1.5rem] border border-dashed border-sand bg-[#fbf8f5] p-8 text-center">
+            <p className="text-sm font-semibold text-cocoa">{isFr ? "Les avis approuvés apparaîtront ici automatiquement." : "Approved customer reviews will appear here automatically."}</p>
+            <Link href="/shop" className="mt-4 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.08em] text-flame">{isFr ? "Découvrir la boutique" : "Explore the shop"}<ArrowRight className="size-3.5" /></Link>
+          </div>
+        )}
       </section>
 
       <section className="bg-[#f6e5da] py-10 sm:py-14">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-            <div><p className="text-[9px] font-bold uppercase tracking-[.18em] text-flame sm:text-[10px]">MAMAHAIR community</p><h2 className="mt-2 text-3xl text-cocoa sm:text-4xl">{isFr ? "Inspirez-vous de nos looks" : "Wear it your way"}</h2></div>
-            <div className="flex gap-4 text-xs font-semibold text-cocoa"><span className="inline-flex items-center gap-1.5"><Camera className="size-4" /> Instagram</span><span className="inline-flex items-center gap-1.5"><Heart className="size-4" /> TikTok</span></div>
+            <div><p className="text-[9px] font-bold uppercase tracking-[.18em] text-flame sm:text-[10px]">Style inspiration</p><h2 className="mt-2 text-3xl text-cocoa sm:text-4xl">{isFr ? "Inspirez votre prochain look" : "Find your next look"}</h2></div>
+            <div className="flex gap-4 text-xs font-semibold text-cocoa"><span className="inline-flex items-center gap-1.5"><Camera className="size-4" /> Editorial</span><span className="inline-flex items-center gap-1.5"><Heart className="size-4" /> Hair ideas</span></div>
           </div>
           <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
             {MODEL_IMAGES.map((image, i) => <div key={image} className="group relative aspect-square overflow-hidden rounded-xl bg-cover bg-center sm:rounded-[1.2rem]" style={{ backgroundImage: `url(${image})` }}><div className="absolute inset-0 grid place-items-center bg-cocoa/0 transition group-hover:bg-cocoa/35"><MessageCircle className="size-6 text-white opacity-0 transition group-hover:opacity-100" /></div><span className="absolute bottom-3 left-3 rounded-full bg-white/90 px-2.5 py-1 text-[8px] font-bold uppercase tracking-[.08em] text-cocoa">Look 0{i + 1}</span></div>)}
