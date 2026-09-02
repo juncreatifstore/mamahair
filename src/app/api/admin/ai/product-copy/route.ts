@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 
 const OUTPUT_KEYS = ["slug", "sku", "shortDesc", "description", "howToUse", "ingredients", "seoTitle", "seoDescription"] as const;
+const MODES = ["all", "identity", "details", "usage", "seo", ...OUTPUT_KEYS] as const;
 
 type ProductAIResult = Partial<Record<(typeof OUTPUT_KEYS)[number], string>> & { notes?: string[] };
 
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing product context." }, { status: 400 });
   }
 
-  const mode = ["all", "identity", "details", "usage", "seo"].includes(body.mode ?? "") ? body.mode! : "all";
+  const mode = MODES.includes((body.mode ?? "") as (typeof MODES)[number]) ? body.mode! : "all";
   const language = body.language || "English";
   const context = sanitizeContext(body.context);
 
@@ -40,7 +41,7 @@ Return this exact object shape:
 {"slug":"","sku":"","shortDesc":"","description":"","howToUse":"","ingredients":"","seoTitle":"","seoDescription":"","notes":[]}
 
 MODE: ${mode}
-For fields outside the requested mode, preserve a supplied current value when available; otherwise return an empty string.`;
+If MODE is one exact field name, generate ONLY that field and return empty strings for the others. If MODE is a group, generate only fields in that group. For fields outside the requested mode, return an empty string.`;
 
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
