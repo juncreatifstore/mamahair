@@ -40,6 +40,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     ...Object.entries((p.attributes as Record<string, string> | null) ?? {}),
   ];
   const features = [[tp.canBleach, p.canBleach], [tp.canDye, p.canDye], [tp.heatSafe, p.heatSafe], [tp.prePlucked, p.prePlucked], [tp.babyHair, p.babyHair], [tp.glueless, p.glueless], [tp.adjustableStrap, p.adjustableStrap]].filter(([, v]) => v === true).map(([l]) => l as string);
+  const customerPhotos = p.reviews.flatMap((review) => review.photoUrls.map((url) => ({ url, reviewId: review.id, verified: review.isVerifiedPurchase, name: review.user.firstName ?? "Customer" }))).slice(0, 12);
 
   const variantPrices = p.variants.map((v) => v.priceCents);
   const jsonLd = [
@@ -87,11 +88,11 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
               {p.shortDesc && <p className="mt-4 max-w-xl text-[15px] leading-7 text-ink-soft">{p.shortDesc}</p>}
 
               {p.ratingCount > 0 && (
-                <div className="mt-4 flex items-center gap-2 text-sm">
+                <a href="#reviews" className="mt-4 inline-flex items-center gap-2 rounded-full bg-cream px-3.5 py-2 text-sm transition hover:bg-petal">
                   <span className="tracking-[0.08em] text-flame">{"★".repeat(Math.round(p.ratingAvg ?? 0))}</span>
                   <span className="font-semibold text-cocoa">{p.ratingAvg?.toFixed(1)}</span>
                   <span className="text-ink-soft">({p.ratingCount} {tp.reviews.toLowerCase()})</span>
-                </div>
+                </a>
               )}
 
               <div className="mt-6 border-y border-sand/80 py-6">
@@ -167,29 +168,55 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         </div>
       </section>
 
-      <section className="mx-auto mt-16 max-w-7xl px-4 sm:px-6 md:mt-20">
-        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-          <div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-flame">Customer love</p><h2 className="mt-2 text-4xl text-cocoa">{tp.reviews}</h2></div>
-          {p.ratingCount > 0 && <div className="rounded-full border border-sand bg-white px-5 py-2.5 text-sm"><span className="font-semibold text-cocoa">★ {p.ratingAvg?.toFixed(1)}</span><span className="ml-2 text-ink-soft">{p.ratingCount} reviews</span></div>}
+      <section id="reviews" className="mx-auto mt-16 scroll-mt-32 max-w-7xl px-4 sm:px-6 md:mt-20">
+        <div className="mb-8 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-flame">Customer reviews</p>
+            <h2 className="mt-2 text-4xl text-cocoa">Real feedback from MAMAHAIR customers</h2>
+          </div>
+          {p.ratingCount > 0 && (
+            <div className="rounded-[1.4rem] border border-sand bg-white px-5 py-4 shadow-[0_10px_25px_rgba(74,27,12,.035)]">
+              <div className="flex items-end gap-2"><span className="text-4xl font-bold leading-none text-cocoa">{p.ratingAvg?.toFixed(1)}</span><span className="pb-1 text-sm text-ink-soft">/ 5</span></div>
+              <div className="mt-2 text-sm tracking-[.08em] text-flame">{"★".repeat(Math.round(p.ratingAvg ?? 0))}<span className="text-sand">{"★".repeat(5 - Math.round(p.ratingAvg ?? 0))}</span></div>
+              <p className="mt-1 text-xs text-ink-soft">Based on {p.ratingCount} approved review{p.ratingCount === 1 ? "" : "s"}</p>
+            </div>
+          )}
         </div>
+
+        {customerPhotos.length > 0 && (
+          <div className="mb-8 rounded-[1.75rem] border border-sand/70 bg-[#fbf8f5] p-4 sm:p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-flame">Customer photos</p><p className="mt-1 text-sm text-ink-soft">Photos attached to approved product reviews.</p></div>
+              <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-cocoa">{customerPhotos.length}</span>
+            </div>
+            <div className="no-scrollbar -mx-1 mt-4 flex gap-2 overflow-x-auto px-1 pb-1 sm:grid sm:grid-cols-6 lg:grid-cols-8">
+              {customerPhotos.map((photo, index) => (
+                <a key={`${photo.reviewId}-${photo.url}-${index}`} href={`#review-${photo.reviewId}`} className="group relative aspect-square w-28 shrink-0 overflow-hidden rounded-2xl bg-petal ring-1 ring-sand/70 sm:w-auto">
+                  <Image src={photo.url} alt={`Customer review photo from ${photo.name}`} fill sizes="(max-width: 640px) 112px, 16vw" className="object-cover transition duration-300 group-hover:scale-105" />
+                  {photo.verified && <span className="absolute bottom-2 left-2 rounded-full bg-white/92 px-2 py-1 text-[8px] font-bold uppercase tracking-[.06em] text-green-700 shadow-sm">Verified</span>}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
           <div>
             {p.reviews.length === 0 ? <div className="rounded-[1.75rem] border border-dashed border-sand bg-white p-10 text-center"><p className="display text-2xl text-cocoa">No reviews yet</p><p className="mt-2 text-sm text-ink-soft">Be the first to share your experience.</p></div> : (
               <div className="grid gap-4 sm:grid-cols-2">
                 {p.reviews.map((r) => (
-                  <article key={r.id} className="rounded-[1.5rem] border border-sand/70 bg-white p-5 shadow-[0_10px_25px_rgba(74,27,12,0.035)]">
-                    <div className="flex items-center justify-between gap-3"><span className="text-sm tracking-[0.1em] text-flame">{"★".repeat(r.rating)}<span className="text-sand">{"★".repeat(5 - r.rating)}</span></span>{r.isVerifiedPurchase && <Badge tone="green">{tp.verified}</Badge>}</div>
-                    {r.title && <p className="mt-4 font-semibold text-cocoa">{r.title}</p>}
-                    {r.body && <p className="mt-2 text-sm leading-6 text-ink-soft">{r.body}</p>}
-                    {r.photoUrls.length > 0 && <div className="mt-4 flex gap-2">{r.photoUrls.map((u) => <div key={u} className="relative size-16 overflow-hidden rounded-xl bg-petal"><Image src={u} alt="" fill sizes="64px" className="object-cover" /></div>)}</div>}
-                    <p className="mt-5 border-t border-sand pt-3 text-xs font-semibold uppercase tracking-[0.08em] text-ink-soft">{r.user.firstName ?? "Customer"}</p>
+                  <article id={`review-${r.id}`} key={r.id} className="scroll-mt-32 rounded-[1.5rem] border border-sand/70 bg-white p-5 shadow-[0_10px_25px_rgba(74,27,12,0.035)] sm:p-6">
+                    <div className="flex flex-wrap items-center justify-between gap-3"><span className="text-sm tracking-[0.1em] text-flame">{"★".repeat(r.rating)}<span className="text-sand">{"★".repeat(5 - r.rating)}</span></span>{r.isVerifiedPurchase && <Badge tone="green">{tp.verified}</Badge>}</div>
+                    {r.title && <p className="mt-4 text-base font-semibold text-cocoa">{r.title}</p>}
+                    {r.body && <p className="mt-2 text-sm leading-7 text-ink-soft">{r.body}</p>}
+                    {r.photoUrls.length > 0 && <div className="mt-4 grid grid-cols-3 gap-2">{r.photoUrls.slice(0, 6).map((u) => <div key={u} className="relative aspect-square overflow-hidden rounded-xl bg-petal ring-1 ring-sand/70"><Image src={u} alt="Customer review photo" fill sizes="160px" className="object-cover" /></div>)}</div>}
+                    <div className="mt-5 flex items-center justify-between gap-3 border-t border-sand pt-3"><p className="text-xs font-semibold uppercase tracking-[0.08em] text-ink-soft">{r.user.firstName ?? "Customer"}</p><time className="text-[10px] text-ink-soft" dateTime={r.createdAt.toISOString()}>{r.createdAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</time></div>
                   </article>
                 ))}
               </div>
             )}
           </div>
-          <div className="h-fit rounded-[1.75rem] border border-sand/70 bg-white p-5 sm:p-6"><ReviewForm productId={p.id} title={tp.writeReview} loggedIn={!!user} /></div>
+          <div className="h-fit rounded-[1.75rem] border border-sand/70 bg-white p-5 sm:p-6 lg:sticky lg:top-32"><ReviewForm productId={p.id} title={tp.writeReview} loggedIn={!!user} /></div>
         </div>
       </section>
 
