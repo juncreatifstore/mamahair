@@ -3,25 +3,13 @@ import { db } from "@/lib/db";
 import { getPaymentProvider } from "@/lib/payments";
 import { commitOrderReservations, releaseOrderReservations, restock, lockOrder } from "@/lib/stock";
 import { sendOrderConfirmation, sendRefund } from "@/lib/email";
+import { awardPaidOrderRewards } from "@/lib/rewards";
 import { logger } from "@/lib/logger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * Webhook Stripe — SEULE autorité pour marquer une commande PAYÉE (jamais le redirect navigateur).
- *  Stripe → Developers → Webhooks : https://<domaine>/api/webhooks/stripe
- *  Événements : checkout.session.completed, checkout.session.async_payment_succeeded,
- *               checkout.session.async_payment_failed, checkout.session.expired, charge.refunded
- *  Local : stripe listen --forward-to localhost:3000/api/webhooks/stripe
- *
- * Garanties :
- *  - signature vérifiée avant toute lecture ;
- *  - idempotence : l'id d'événement est inséré dans WebhookEvent (clé primaire) avant traitement ;
- *  - la commande est verrouillée (SELECT … FOR UPDATE) et son statut relu sous verrou :
- *    un "paid" et une expiration (cron ou Stripe) ne peuvent pas s'entrelacer ;
- *  - le stock n'est débité qu'une fois (réservations marquées committedAt par UPDATE conditionnel).
- */
+/** Stripe webhook is the only authority that marks an order paid. */
 export async function POST(req: Request) {
   const provider = getPaymentProvider("STRIPE");
   let parsed: Awaited<ReturnType<typeof provider.parseWebhook>>;
@@ -65,11 +53,12 @@ export async function POST(req: Request) {
           await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
           await tx.cart.update({ where: { id: cart.id }, data: { discountId: null, convertedAt: new Date() } });
         }
-        return { kind: "paid" as const, order: updated };
+        return { kind: "paid" as const, order: updated, userId: o.userId, itemCount: o.items.reduce((sum, item) => sum + item.quantity, 0) };
       });
-      if (result.kind === "paid") await sendOrderConfirmation(result.order);
-      else if (result.kind === "already" && result.status === "CANCELLED") {
-        // Paiement reçu pour une commande déjà annulée/expirée : à traiter manuellement (remboursement).
+      if (result.kind === "paid") {
+        if (result.userId) await awardPaidOrderRewards(result.order.id, result.userId, result.itemCount).catch((error) => logger.error("rewards.award_failed", error, { orderId: result.order.id }));
+        await sendOrderConfirmation(result.order);
+      } else if (result.kind === "already" && result.status === "CANCELLED") {
         await logger.error("webhook.paid_for_cancelled_order", new Error("Payment received for a cancelled order"), { orderId: outcome.orderId, providerId: outcome.providerId });
         await db.payment.updateMany({ where: { orderId: outcome.orderId }, data: { status: "SUCCEEDED", providerId: outcome.providerId, intentId: outcome.intentId ?? undefined, amountCents: outcome.amountCents } });
         await db.order.update({ where: { id: outcome.orderId }, data: { internalNotes: "PAYMENT RECEIVED AFTER CANCELLATION — refund required", history: { create: { status: "CANCELLED", actor: "webhook", note: "Payment received after cancellation: refund required" } } } });
@@ -94,7 +83,6 @@ export async function POST(req: Request) {
           const status = await lockOrder(tx, payment.orderId);
           await tx.payment.update({ where: { id: payment.id }, data: { refundedCents: outcome.amountCents, status: full ? "REFUNDED" : "PARTIALLY_REFUNDED" } });
           await tx.order.update({ where: { id: payment.orderId }, data: { refundedCents: outcome.amountCents, status: full ? "REFUNDED" : "PARTIALLY_REFUNDED", history: { create: { status: full ? "REFUNDED" : "PARTIALLY_REFUNDED", actor: "webhook", note: "Refund synced from Stripe" } } } });
-          // Remise en stock uniquement au passage en remboursement total (jamais deux fois).
           if (full && status !== "REFUNDED") for (const i of payment.order.items) await restock(tx, i.variantId, i.quantity);
         });
         await sendRefund({ ...payment.order, refundedCents: delta });
@@ -102,7 +90,7 @@ export async function POST(req: Request) {
     }
   } catch (err) {
     await logger.error("webhook.processing_failed", err, { eventId, type });
-    await db.webhookEvent.delete({ where: { id: eventId } }).catch(() => null); // Stripe rejouera l'événement
+    await db.webhookEvent.delete({ where: { id: eventId } }).catch(() => null);
     return NextResponse.json({ error: "Processing failed" }, { status: 500 });
   }
 
