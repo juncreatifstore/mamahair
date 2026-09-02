@@ -6,7 +6,7 @@ import { db } from "./db";
  * Chaque section est une clé `Setting` JSON avec des valeurs par défaut typées.
  */
 export type SettingsMap = {
-  general: { companyName: string; storeName: string; tagline: string; announcement: string; announcementEnabled: boolean };
+  general: { companyName: string; storeName: string; tagline: string; announcement: string; announcementEnabled: boolean; announcementLink: string; announcementEndsAt: string; announcementCountdownEnabled: boolean };
   branding: { logoUrl: string; logoLightUrl: string; logoDarkUrl: string; faviconUrl: string; primaryColor: string; accentColor: string };
   contact: { email: string; phone: string; whatsapp: string; addressLine: string; city: string; region: string; postalCode: string; country: string };
   social: { instagram: string; facebook: string; tiktok: string; youtube: string; pinterest: string };
@@ -22,7 +22,16 @@ export type SettingsMap = {
 export type SettingSection = keyof SettingsMap;
 
 export const DEFAULT_SETTINGS: SettingsMap = {
-  general: { companyName: "MAMAHAIR.COM", storeName: "MAMAHAIR", tagline: "Premium wigs, bundles & hair care for textured hair", announcement: "Free US shipping over $99 · New arrivals every week · Secure checkout", announcementEnabled: true },
+  general: {
+    companyName: "MAMAHAIR.COM",
+    storeName: "MAMAHAIR",
+    tagline: "Premium wigs, bundles & hair care for textured hair",
+    announcement: "Free US shipping over $99 · New arrivals every week · Secure checkout",
+    announcementEnabled: true,
+    announcementLink: "/shop",
+    announcementEndsAt: "",
+    announcementCountdownEnabled: false,
+  },
   branding: { logoUrl: "", logoLightUrl: "", logoDarkUrl: "", faviconUrl: "", primaryColor: "#4A1B0C", accentColor: "#D85A30" },
   contact: { email: "hello@mamahair.com", phone: "", whatsapp: "", addressLine: "", city: "", region: "", postalCode: "", country: "US" },
   social: { instagram: "", facebook: "", tiktok: "", youtube: "", pinterest: "" },
