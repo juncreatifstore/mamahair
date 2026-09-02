@@ -9,7 +9,7 @@ export type ProductFilters = {
 
 const cardSelect = {
   id: true, slug: true, name: true, shortDesc: true, basePriceCents: true, compareAtCents: true, currency: true, productType: true,
-  hairTypes: true, textures: true, lengths: true, isNew: true, isBestSeller: true, ratingAvg: true, ratingCount: true,
+  hairTypes: true, textures: true, lengths: true, isNew: true, isBestSeller: true, ratingAvg: true, ratingCount: true, salesCount: true,
   images: { orderBy: { sortOrder: "asc" as const }, take: 2, select: { url: true, alt: true } },
   category: { select: { slug: true, name: true } },
 } satisfies Prisma.ProductSelect;
@@ -30,7 +30,7 @@ export function buildWhere(f: ProductFilters): Prisma.ProductWhereInput {
   if (f.isNew) where.isNew = true;
   if (f.bestSeller) where.isBestSeller = true;
   if (f.minPrice || f.maxPrice) where.basePriceCents = { ...(f.minPrice ? { gte: Math.round(parseFloat(f.minPrice) * 100) } : {}), ...(f.maxPrice ? { lte: Math.round(parseFloat(f.maxPrice) * 100) } : {}) };
-  if (f.inStock) where.variants = { some: { isActive: true, inventory: { is: { quantity: { gt: db.inventory.fields.reserved } } } } };
+  if (f.inStock) where.variants = { some: { isActive: true, inventory: { is: { quantity: { gt: db.inventory.fields.reserved } } } };
   if (f.q) {
     const q = f.q.trim();
     where.OR = [
