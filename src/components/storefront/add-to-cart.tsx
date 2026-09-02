@@ -2,7 +2,7 @@
 import { useMemo, useState, useTransition } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Check, ShieldCheck, Truck } from "lucide-react";
+import { Check, Gift, RotateCcw, ShieldCheck, Truck } from "lucide-react";
 import { addToCart } from "@/server/cart";
 import { Button } from "@/components/ui/button";
 import { formatCents } from "@/lib/money";
@@ -52,6 +52,24 @@ export function AddToCart({ variants, currency, labels, onVariantChange }: { var
       variantImage?.setSelectedImageUrl(nv.image?.url ?? null);
       onVariantChange?.(nv);
     }
+  };
+
+  const submit = (buyNow = false) => {
+    if (!match || available <= 0) return;
+    start(async () => {
+      setMsg(null);
+      const res = await addToCart(match.id, qty);
+      if (res.error) {
+        setMsg(res.error);
+        return;
+      }
+      if (buyNow) {
+        router.push("/checkout");
+        return;
+      }
+      setMsg(labels.added);
+      router.refresh();
+    });
   };
 
   return (
@@ -114,22 +132,33 @@ export function AddToCart({ variants, currency, labels, onVariantChange }: { var
       </div>
 
       <div className="mt-6 grid grid-cols-[112px_1fr] gap-3 sm:grid-cols-[124px_1fr]">
-        <div className="flex h-13 items-center justify-between rounded-full border border-sand bg-white px-1">
+        <div className="flex h-[52px] items-center justify-between rounded-full border border-sand bg-white px-1">
           <button type="button" aria-label="Decrease" onClick={() => setQty((q) => Math.max(1, q - 1))} className="grid size-11 place-items-center rounded-full text-xl transition hover:bg-petal">−</button>
           <span className="min-w-6 text-center text-sm font-semibold text-cocoa">{qty}</span>
           <button type="button" aria-label="Increase" onClick={() => setQty((q) => Math.min(Math.max(1, available), q + 1))} disabled={available <= 0 || qty >= available} className="grid size-11 place-items-center rounded-full text-xl transition hover:bg-petal disabled:opacity-35">+</button>
         </div>
-        <Button size="lg" className="h-13 w-full justify-center text-sm shadow-[0_14px_34px_rgba(216,90,48,0.22)]" disabled={pending || !match || available <= 0} onClick={() => match && start(async () => { const res = await addToCart(match.id, qty); setMsg(res.error ?? labels.added); if (!res.error) router.refresh(); })}>
+        <Button size="lg" className="h-[52px] w-full justify-center text-sm shadow-[0_14px_34px_rgba(216,90,48,0.22)]" disabled={pending || !match || available <= 0} onClick={() => submit(false)}>
           {!match || available <= 0 ? labels.out : pending ? "…" : labels.add}
         </Button>
       </div>
 
+      <button
+        type="button"
+        disabled={pending || !match || available <= 0}
+        onClick={() => submit(true)}
+        className="mt-3 flex h-[52px] w-full items-center justify-center rounded-full border border-cocoa bg-white px-5 text-sm font-bold uppercase tracking-[.06em] text-cocoa transition hover:bg-cocoa hover:text-cream disabled:cursor-not-allowed disabled:opacity-45"
+      >
+        {!match || available <= 0 ? labels.out : pending ? "Preparing checkout…" : "Buy now · Secure checkout"}
+      </button>
+
       {msg && <p className="mt-3 rounded-xl bg-petal px-3 py-2 text-sm text-flame" role="status">{msg}</p>}
       {available > 0 && available <= 5 && <p className="mt-3 text-xs font-semibold text-amber-700">{labels.onlyLeft.replace("{n}", String(available))}</p>}
 
-      <div className="mt-5 grid grid-cols-2 gap-2.5 border-t border-sand pt-5 text-[11px] text-ink-soft sm:text-xs">
-        <p className="flex items-center gap-2 rounded-xl bg-cream px-3 py-2.5"><ShieldCheck className="size-4 shrink-0 text-cocoa" /> Secure payment</p>
-        <p className="flex items-center gap-2 rounded-xl bg-cream px-3 py-2.5"><Truck className="size-4 shrink-0 text-cocoa" /> Tracked shipping</p>
+      <div className="mt-5 grid gap-2 border-t border-sand pt-5 text-[11px] text-ink-soft sm:grid-cols-2 sm:text-xs">
+        <p className="flex items-center gap-2 rounded-xl bg-cream px-3 py-2.5"><ShieldCheck className="size-4 shrink-0 text-cocoa" /> Secure Stripe checkout</p>
+        <p className="flex items-center gap-2 rounded-xl bg-cream px-3 py-2.5"><Truck className="size-4 shrink-0 text-cocoa" /> Tracked shipping when available</p>
+        <p className="flex items-center gap-2 rounded-xl bg-cream px-3 py-2.5"><RotateCcw className="size-4 shrink-0 text-cocoa" /> Returns follow store policy</p>
+        <p className="flex items-center gap-2 rounded-xl bg-cream px-3 py-2.5"><Gift className="size-4 shrink-0 text-cocoa" /> Signed-in purchases can earn Mama Rewards</p>
       </div>
     </div>
   );
