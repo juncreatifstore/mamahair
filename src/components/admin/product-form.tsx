@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
-import { Check, CircleDollarSign, FileText, Package, Search, Sparkles, Truck } from "lucide-react";
+import { Check, CircleDollarSign, FileText, Images, Package, Search, Sparkles, Truck } from "lucide-react";
 import { createProduct, updateProduct, type ActionState } from "@/server/admin/products";
 import { Field, Input, Textarea, Select, Checkbox } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
@@ -13,6 +13,7 @@ import type { Product } from "@prisma/client";
 
 const SECTIONS = [
   { key: "General", label: "General", short: "Identity", icon: Package },
+  { key: "Media", label: "Media", short: "Photos", icon: Images },
   { key: "Hair attributes", label: "Hair attributes", short: "Hair", icon: Sparkles },
   { key: "Pricing & inventory", label: "Pricing & merchandising", short: "Pricing", icon: CircleDollarSign },
   { key: "Shipping", label: "Shipping", short: "Shipping", icon: Truck },
@@ -117,6 +118,45 @@ export function ProductForm({ product, categories, currencies }: { product?: Pro
               </div>
             )}
 
+            {section === "Media" && (
+              <div className="space-y-5">
+                {!p?.id ? (
+                  <>
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <div className="rounded-2xl bg-cocoa p-4 text-cream"><p className="text-[10px] font-bold uppercase tracking-[.15em] text-peach">Main image</p><p className="mt-2 text-sm font-semibold">The first selected photo becomes MAIN.</p><p className="mt-1 text-xs leading-5 text-cream/65">Use the strongest vertical product photo first.</p></div>
+                      <div className="rounded-2xl border border-sand bg-petal/40 p-4"><p className="text-[10px] font-bold uppercase tracking-[.15em] text-flame">Recommended</p><p className="mt-2 text-sm font-semibold text-cocoa">1200 × 1500 px · 4:5</p><p className="mt-1 text-xs leading-5 text-ink-soft">JPG, PNG, WebP or AVIF. Up to 10 photos.</p></div>
+                      <div className="rounded-2xl border border-sand bg-white p-4"><p className="text-[10px] font-bold uppercase tracking-[.15em] text-flame">After creation</p><p className="mt-2 text-sm font-semibold text-cocoa">You can reorder and assign variant photos.</p><p className="mt-1 text-xs leading-5 text-ink-soft">The full Media Studio opens on the product edit page.</p></div>
+                    </div>
+                    <Field label="Product photos" hint="Select the main photo first, then the gallery photos.">
+                      <Input type="file" name="initialImages" accept="image/jpeg,image/png,image/webp,image/avif" multiple />
+                    </Field>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Field label="Type for additional photos" hint="The first photo is always MAIN.">
+                        <Select name="initialImageKind" defaultValue="GALLERY">
+                          <option value="GALLERY">Gallery</option>
+                          <option value="VARIANT">Variant</option>
+                          <option value="WORN">Worn / model</option>
+                          <option value="LACE_DETAIL">Lace detail</option>
+                          <option value="TEXTURE">Texture detail</option>
+                          <option value="PACKAGING">Packaging</option>
+                        </Select>
+                      </Field>
+                      <Field label="Alt text" hint="Applied to the uploaded photos; can be edited later.">
+                        <Input name="initialImageAlt" placeholder={name ? `${name} product photo` : "Describe the product photo"} maxLength={240} />
+                      </Field>
+                    </div>
+                    <div className="rounded-2xl border border-dashed border-sand bg-[#fbf8f5] p-4 text-sm leading-6 text-ink-soft">Photos are uploaded only when you click <strong className="text-cocoa">Create product</strong> or <strong className="text-cocoa">Create & publish</strong>. If an image upload fails, the new product creation is rolled back so you do not end up with a half-created product.</div>
+                  </>
+                ) : (
+                  <div className="rounded-2xl border border-sand bg-petal/45 p-6">
+                    <Images className="size-5 text-flame" />
+                    <p className="mt-3 font-semibold text-cocoa">Media Studio is available below this editor.</p>
+                    <p className="mt-1 text-sm leading-6 text-ink-soft">Use it to upload, reorder, categorize, edit ALT text and link photos to variants.</p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {section === "Hair attributes" && (
               <div className="space-y-6">
                 {isHair ? (
@@ -215,7 +255,7 @@ export function ProductForm({ product, categories, currencies }: { product?: Pro
             <SubmitButton className="mt-5 w-full" size="lg">{p?.id ? "Save changes" : status === "ACTIVE" ? "Create & publish" : "Create product"}</SubmitButton>
           </section>
 
-          {p?.id && <section className="rounded-[1.5rem] border border-sand bg-[#fbf8f5] p-5 text-xs leading-5 text-ink-soft"><p className="font-semibold text-cocoa">Next after saving</p><p className="mt-1">Use Media for product photos, then Variants & inventory for purchasable combinations, SKU, stock and variant-specific prices.</p></section>}
+          {p?.id && <section className="rounded-[1.5rem] border border-sand bg-[#fbf8f5] p-5 text-xs leading-5 text-ink-soft"><p className="font-semibold text-cocoa">Next after saving</p><p className="mt-1">Use Media Studio for product photos, then Variants & inventory for purchasable combinations, SKU, stock and variant-specific prices.</p></section>}
         </aside>
       </div>
     </form>
@@ -232,6 +272,7 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 
 function sectionDescription(section: SectionKey) {
   if (section === "General") return "Core identity and customer-facing product content.";
+  if (section === "Media") return "Upload the first product photos during creation. The first selected image becomes the storefront main image.";
   if (section === "Hair attributes") return "Hair construction, available options and recommendation profile.";
   if (section === "Pricing & inventory") return "Base pricing and merchandising flags. Variant stock is managed after creation.";
   if (section === "Shipping") return "Weight used by your real shipping zones and checkout rates.";
