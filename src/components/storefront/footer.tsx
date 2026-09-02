@@ -14,7 +14,7 @@ export async function Footer() {
     <footer className="mt-24 overflow-hidden bg-cocoa-deep text-cream">
       <div className="border-b border-cream/10 bg-cocoa px-4 py-4 sm:px-6">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-8 gap-y-2 text-center text-[10px] font-bold uppercase tracking-[0.16em] text-cream/72 md:justify-between">
-          <span>Premium quality</span><span>Secure checkout</span><span>Worldwide ready</span><span>Curated for confidence</span>
+          <span>Premium quality</span><span>Secure checkout</span><span>Delivery options at checkout</span><span>Curated for confidence</span>
         </div>
       </div>
 
@@ -72,7 +72,7 @@ export async function Footer() {
 
         <div className="flex flex-col gap-4 pt-6 text-[11px] text-cream/45 md:flex-row md:items-center md:justify-between">
           <p>© {new Date().getFullYear()} {b.companyName}. {t.footer.rights}</p>
-          <p>{t.footer.payments}: Visa · Mastercard · Amex · Apple Pay · Google Pay</p>
+          <p>{t.footer.payments}: available methods are displayed securely during checkout</p>
         </div>
       </div>
     </footer>
