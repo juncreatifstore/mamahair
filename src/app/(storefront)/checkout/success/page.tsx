@@ -1,5 +1,4 @@
 import Image from "next/image";
-import Link from "next/link";
 import { ArrowRight, Check, CreditCard, Mail, PackageCheck, ShieldCheck, Truck } from "lucide-react";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
@@ -243,16 +242,10 @@ function ProgressStep({ icon: Icon, label, active, done }: { icon: typeof Check;
   );
 }
 
-function InfoCard({ icon: Icon, eyebrow, title, text }: { icon: typeof Mail; eyebrow: string; title: string; text: string }) {
-  return (
-    <section className="rounded-[1.6rem] border border-sand/70 bg-white p-5">
-      <div className="flex items-center gap-2"><Icon className="size-4 text-flame" /><p className="text-[10px] font-bold uppercase tracking-[.14em] text-cocoa">{eyebrow}</p></div>
-      <p className="mt-3 break-all text-sm font-semibold text-cocoa">{title}</p>
-      <p className="mt-1 text-xs leading-5 text-ink-soft">{text}</p>
-    </section>
-  );
+function AmountRow({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
+  return <div className={`flex justify-between gap-4 ${accent ? "font-semibold text-flame" : "text-ink-soft"}`}><span>{label}</span><span className={accent ? "" : "text-ink"}>{value}</span></div>;
 }
 
-function AmountRow({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
-  return <div className={`flex justify-between gap-4 ${accent ? "font-semibold text-flame" : ""}`}><span className={accent ? "" : "text-ink-soft"}>{label}</span><span>{value}</span></div>;
+function InfoCard({ icon: Icon, eyebrow, title, text }: { icon: typeof Mail; eyebrow: string; title: string; text: string }) {
+  return <section className="rounded-[1.6rem] border border-sand/70 bg-white p-5"><div className="flex items-center gap-2 text-cocoa"><Icon className="size-4 text-flame" /><p className="text-[10px] font-bold uppercase tracking-[.14em]">{eyebrow}</p></div><p className="mt-3 break-all text-sm font-semibold text-cocoa">{title}</p><p className="mt-2 text-xs leading-5 text-ink-soft">{text}</p></section>;
 }
