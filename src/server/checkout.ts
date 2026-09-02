@@ -135,7 +135,7 @@ export async function startCheckout(_prev: CheckoutState, formData: FormData): P
       shipping: { name: rate.name, cents: shippingCents, minDays: rate.minDays, maxDays: rate.maxDays },
       discountCents, discountLabel: discountCode, address, locale, expiresAt,
       automaticTax: payments.stripeTaxEnabled && process.env.STRIPE_TAX_ENABLED !== "false",
-      successUrl: `${SITE}/checkout/success?order=${orderId}`,
+      successUrl: `${SITE}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancelUrl: `${SITE}/cart?cancelled=1`,
     });
     await db.payment.update({ where: { orderId }, data: { providerId: result.providerId } });
