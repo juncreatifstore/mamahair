@@ -18,15 +18,16 @@ export function ProductMediaAIStudioSafe() {
   const router = useRouter();
   const match = pathname.match(/^\/admin\/products\/([^/]+)$/);
   const productId = match?.[1] ?? null;
+  const isNew = productId === "new";
   const [prompt, setPrompt] = useState("");
   const [active, setActive] = useState<Operation | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  if (!productId || productId === "new" || productId === "inventory") return null;
+  if (!productId || productId === "inventory") return null;
 
   async function run(operation: Operation) {
-    if (active) return;
+    if (isNew || active) return;
     setActive(operation);
     setError(null);
     setMessage(null);
@@ -54,33 +55,34 @@ export function ProductMediaAIStudioSafe() {
           <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-flame text-white"><ScanLine className="size-5" /></span>
           <div>
             <div className="flex flex-wrap items-center gap-2"><h2 className="text-xl font-semibold text-cocoa">MAMAHAIR AI Media Studio</h2><span className="rounded-full bg-cocoa px-2.5 py-1 text-[10px] font-bold uppercase tracking-[.12em] text-cream">Images</span></div>
-            <p className="mt-1 max-w-3xl text-sm leading-6 text-ink-soft">Generate, retouch and brand product visuals. AI results are saved as new images so the original stays untouched.</p>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-ink-soft">{isNew ? "AI Media is ready for this workflow. Create the product first so generated images can be attached safely to its media library." : "Generate, retouch and brand product visuals. AI results are saved as new images so the original stays untouched."}</p>
           </div>
         </div>
       </div>
 
       <div className="p-5 md:p-6">
-        <label className="block text-sm font-semibold text-cocoa">Optional art direction
+        {!isNew && <label className="block text-sm font-semibold text-cocoa">Optional art direction
           <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Example: warm cream background, soft studio shadow, luxury editorial lighting…" className="mt-2 min-h-20 w-full rounded-2xl border border-sand bg-white px-4 py-3 text-sm font-normal text-ink outline-none focus:border-cocoa" />
-        </label>
+        </label>}
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className={isNew ? "grid gap-3 sm:grid-cols-2 xl:grid-cols-4" : "mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"}>
           {ACTIONS.map((item) => {
             const Icon = item.icon;
             const loading = active === item.key;
             return (
-              <button key={item.key} type="button" disabled={active !== null} onClick={() => run(item.key)} className="rounded-2xl border border-sand bg-white p-4 text-left transition hover:border-cocoa/35 hover:bg-petal/30 disabled:opacity-55">
+              <button key={item.key} type="button" disabled={isNew || active !== null} onClick={() => run(item.key)} className="rounded-2xl border border-sand bg-white p-4 text-left transition hover:border-cocoa/35 hover:bg-petal/30 disabled:cursor-not-allowed disabled:opacity-55">
                 <span className="grid size-9 place-items-center rounded-xl bg-petal text-flame"><Icon className="size-4" /></span>
                 <p className="mt-4 text-sm font-semibold text-cocoa">{loading ? "Generating…" : item.label}</p>
-                <p className="mt-1 text-xs leading-5 text-ink-soft">{item.description}</p>
+                <p className="mt-1 text-xs leading-5 text-ink-soft">{isNew ? "Unlocks automatically after Create product." : item.description}</p>
               </button>
             );
           })}
         </div>
 
+        {isNew && <div className="mt-4 rounded-xl border border-dashed border-flame/30 bg-petal/40 px-4 py-3 text-sm leading-6 text-cocoa"><strong>Create the product, then use these same buttons immediately.</strong> A product ID is required so generated images, retouched copies and branded versions are saved to the correct product.</div>}
         {error && <p role="alert" className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
         {message && <p className="mt-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{message}</p>}
-        <div className="mt-4 flex items-start gap-2 rounded-xl bg-petal/45 px-4 py-3 text-xs leading-5 text-ink-soft"><Sparkles className="mt-0.5 size-4 shrink-0 text-flame" /><p><strong className="text-cocoa">Safe workflow:</strong> retouching is instructed to preserve the visible product. Branding uses the logo configured in Admin → Settings → Branding.</p></div>
+        {!isNew && <div className="mt-4 flex items-start gap-2 rounded-xl bg-petal/45 px-4 py-3 text-xs leading-5 text-ink-soft"><Sparkles className="mt-0.5 size-4 shrink-0 text-flame" /><p><strong className="text-cocoa">Safe workflow:</strong> retouching is instructed to preserve the visible product. Branding uses the logo configured in Admin → Settings → Branding.</p></div>}
       </div>
     </section>
   );
