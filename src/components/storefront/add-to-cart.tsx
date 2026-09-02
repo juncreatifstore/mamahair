@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState, useTransition } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, Gift, RotateCcw, ShieldCheck, Truck } from "lucide-react";
 import { addToCart } from "@/server/cart";
@@ -28,9 +29,9 @@ export function AddToCart({ variants, currency, labels, onVariantChange }: { var
   const available = match ? Math.max(0, (match.inventory?.quantity ?? 0) - (match.inventory?.reserved ?? 0)) : 0;
   const discount = match?.compareAtCents && match.compareAtCents > match.priceCents ? Math.round((1 - match.priceCents / match.compareAtCents) * 100) : 0;
 
-  const variantsForValue = (key: OptionKey, value: string) => variants.filter((v) => opts(v)[key] === value);
-  const optionAvailable = (key: OptionKey, value: string) => variantsForValue(key, value).some(inStock);
-  const optionImage = (key: OptionKey, value: string) => variantsForValue(key, value).find((v) => inStock(v) && v.image?.url)?.image?.url ?? variantsForValue(key, value).find((v) => v.image?.url)?.image?.url ?? null;
+  const candidatesFor = (key: OptionKey, value: string) => variants.filter((v) => opts(v)[key] === value);
+  const optionAvailable = (key: OptionKey, value: string) => candidatesFor(key, value).some(inStock);
+  const optionImage = (key: OptionKey, value: string) => candidatesFor(key, value).find((v) => v.image?.url)?.image?.url ?? null;
 
   const pick = (key: OptionKey, value: string) => {
     if (!optionAvailable(key, value)) return;
@@ -150,10 +151,10 @@ export function AddToCart({ variants, currency, labels, onVariantChange }: { var
       {available > 0 && available <= 5 && <p className="mt-3 text-xs font-semibold text-amber-700">{labels.onlyLeft.replace("{n}", String(available))}</p>}
 
       <div className="mt-5 grid gap-2 border-t border-sand pt-5 text-[11px] text-ink-soft sm:grid-cols-2 sm:text-xs">
-        <p className="flex items-center gap-2 rounded-xl bg-cream px-3 py-2.5"><ShieldCheck className="size-4 shrink-0 text-cocoa" /> Secure Stripe checkout</p>
-        <p className="flex items-center gap-2 rounded-xl bg-cream px-3 py-2.5"><Truck className="size-4 shrink-0 text-cocoa" /> Tracked shipping when available</p>
-        <p className="flex items-center gap-2 rounded-xl bg-cream px-3 py-2.5"><RotateCcw className="size-4 shrink-0 text-cocoa" /> Returns follow store policy</p>
-        <p className="flex items-center gap-2 rounded-xl bg-cream px-3 py-2.5"><Gift className="size-4 shrink-0 text-cocoa" /> Signed-in purchases can earn Mama Rewards</p>
+        <p className="flex items-center gap-2 rounded-xl bg-cream px-3 py-2.5"><ShieldCheck className="size-4 shrink-0 text-cocoa" /> Secure checkout; available methods are shown at payment</p>
+        <Link href="/pages/shipping" className="flex items-center gap-2 rounded-xl bg-cream px-3 py-2.5 transition hover:bg-petal"><Truck className="size-4 shrink-0 text-cocoa" /> Delivery options and rates are calculated at checkout</Link>
+        <Link href="/pages/returns" className="flex items-center gap-2 rounded-xl bg-cream px-3 py-2.5 transition hover:bg-petal"><RotateCcw className="size-4 shrink-0 text-cocoa" /> View the current return policy</Link>
+        <Link href="/account/rewards" className="flex items-center gap-2 rounded-xl bg-cream px-3 py-2.5 transition hover:bg-petal"><Gift className="size-4 shrink-0 text-cocoa" /> Signed-in purchases can earn Mama Rewards</Link>
       </div>
     </div>
   );
