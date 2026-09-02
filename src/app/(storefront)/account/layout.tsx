@@ -8,7 +8,15 @@ import Link from "next/link";
 export default async function AccountLayout({ children }: { children: React.ReactNode }) {
   const [user, t] = await Promise.all([requireUser(), getT()]);
   const a = t.account;
-  const items = [{ href: "/account", label: a.dashboard }, { href: "/account/orders", label: a.orders }, { href: "/account/addresses", label: a.addresses }, { href: "/account/wishlist", label: a.wishlist }, { href: "/account/reviews", label: a.reviews }, { href: "/account/settings", label: a.settings }];
+  const items = [
+    { href: "/account", label: a.dashboard },
+    { href: "/account/orders", label: a.orders },
+    { href: "/account/rewards", label: "Mama Rewards" },
+    { href: "/account/addresses", label: a.addresses },
+    { href: "/account/wishlist", label: a.wishlist },
+    { href: "/account/reviews", label: a.reviews },
+    { href: "/account/settings", label: a.settings },
+  ];
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
