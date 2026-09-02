@@ -1,14 +1,15 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Package, ShoppingCart, Users, Tag, Truck, FileText, Settings, ExternalLink, Star, ShoppingBasket, Mail, UserCog, ClipboardCheck } from "lucide-react";
+import { LayoutDashboard, Package, Boxes, ShoppingCart, Users, Tag, Truck, FileText, Settings, ExternalLink, Star, ShoppingBasket, Mail, UserCog, ClipboardCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const links = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/admin/tasks", label: "Responsabilités", icon: ClipboardCheck },
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart, badge: "toShip", permission: "orders.manage" },
-  { href: "/admin/products", label: "Products", icon: Package, permission: "products.manage" },
+  { href: "/admin/products", label: "Products", icon: Package, permission: "products.manage", exact: true },
+  { href: "/admin/products/inventory", label: "Inventory", icon: Boxes, permission: "products.manage" },
   { href: "/admin/customers", label: "Customers", icon: Users, permission: "customers.manage" },
   { href: "/admin/reviews", label: "Reviews", icon: Star, badge: "reviews", permission: "reviews.manage" },
   { href: "/admin/discounts", label: "Discounts", icon: Tag, permission: "discounts.manage" },
