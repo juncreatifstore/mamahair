@@ -4,7 +4,6 @@ import { db } from "./db";
 /**
  * Centre de configuration MAMAHAIR (Admin → Settings).
  * Chaque section est une clé `Setting` JSON avec des valeurs par défaut typées.
- * Rien de tout cela ne doit être codé en dur dans les composants.
  */
 export type SettingsMap = {
   general: { companyName: string; storeName: string; tagline: string; announcement: string; announcementEnabled: boolean };
@@ -13,6 +12,7 @@ export type SettingsMap = {
   social: { instagram: string; facebook: string; tiktok: string; youtube: string; pinterest: string };
   commerce: { defaultCurrency: string; enabledCurrencies: string[]; enabledCountries: string[]; lowStockThreshold: number; reservationMinutes: number; freeShippingBannerCents: number; allowGuestCheckout: boolean };
   payments: { stripeEnabled: boolean; stripeTaxEnabled: boolean; applePayGooglePay: boolean; mercadoPagoEnabled: boolean; paypalEnabled: boolean };
+  rewards: { enabled: boolean; paidOrderPoints: number; perItemPoints: number; minRedeemPoints: number; pointsPerPercent: number; maxRedeemPercent: number; flameThreshold: number; crownThreshold: number };
   shipping: { originCountry: string; handlingDays: number; carrierIntegration: "none" | "shippo" | "easypost" };
   email: { fromName: string; fromEmail: string; replyTo: string; footerText: string };
   seo: { defaultTitle: string; defaultDescription: string; ogImageUrl: string; twitterHandle: string };
@@ -22,56 +22,16 @@ export type SettingsMap = {
 export type SettingSection = keyof SettingsMap;
 
 export const DEFAULT_SETTINGS: SettingsMap = {
-  general: {
-    companyName: "MAMAHAIR.COM",
-    storeName: "MAMAHAIR",
-    tagline: "Premium wigs, bundles & hair care for textured hair",
-    announcement: "Free US shipping over $99 · New arrivals every week · Secure checkout",
-    announcementEnabled: true,
-  },
-  branding: {
-    logoUrl: "",
-    logoLightUrl: "",
-    logoDarkUrl: "",
-    faviconUrl: "",
-    primaryColor: "#4A1B0C",
-    accentColor: "#D85A30",
-  },
-  contact: {
-    email: "hello@mamahair.com",
-    phone: "",
-    whatsapp: "",
-    addressLine: "",
-    city: "",
-    region: "",
-    postalCode: "",
-    country: "US",
-  },
+  general: { companyName: "MAMAHAIR.COM", storeName: "MAMAHAIR", tagline: "Premium wigs, bundles & hair care for textured hair", announcement: "Free US shipping over $99 · New arrivals every week · Secure checkout", announcementEnabled: true },
+  branding: { logoUrl: "", logoLightUrl: "", logoDarkUrl: "", faviconUrl: "", primaryColor: "#4A1B0C", accentColor: "#D85A30" },
+  contact: { email: "hello@mamahair.com", phone: "", whatsapp: "", addressLine: "", city: "", region: "", postalCode: "", country: "US" },
   social: { instagram: "", facebook: "", tiktok: "", youtube: "", pinterest: "" },
-  commerce: {
-    defaultCurrency: "USD",
-    enabledCurrencies: ["USD"],
-    enabledCountries: ["US"],
-    lowStockThreshold: 5,
-    reservationMinutes: 30,
-    freeShippingBannerCents: 9900,
-    allowGuestCheckout: true,
-  },
-  payments: {
-    stripeEnabled: true,
-    stripeTaxEnabled: true,
-    applePayGooglePay: true, // via Stripe Checkout (activés dans le dashboard Stripe)
-    mercadoPagoEnabled: false,
-    paypalEnabled: false,
-  },
+  commerce: { defaultCurrency: "USD", enabledCurrencies: ["USD"], enabledCountries: ["US"], lowStockThreshold: 5, reservationMinutes: 30, freeShippingBannerCents: 9900, allowGuestCheckout: true },
+  payments: { stripeEnabled: true, stripeTaxEnabled: true, applePayGooglePay: true, mercadoPagoEnabled: false, paypalEnabled: false },
+  rewards: { enabled: true, paidOrderPoints: 100, perItemPoints: 25, minRedeemPoints: 500, pointsPerPercent: 100, maxRedeemPercent: 20, flameThreshold: 1000, crownThreshold: 3000 },
   shipping: { originCountry: "US", handlingDays: 2, carrierIntegration: "none" },
   email: { fromName: "MAMAHAIR", fromEmail: "orders@mamahair.com", replyTo: "hello@mamahair.com", footerText: "Premium hair, shipped with love." },
-  seo: {
-    defaultTitle: "MAMAHAIR — Premium wigs, bundles & hair care",
-    defaultDescription: "Human hair wigs, bundles, closures, frontals and care products for afro, curly and textured hair. Ships from the USA.",
-    ogImageUrl: "",
-    twitterHandle: "",
-  },
+  seo: { defaultTitle: "MAMAHAIR — Premium wigs, bundles & hair care", defaultDescription: "Human hair wigs, bundles, closures, frontals and care products for afro, curly and textured hair. Ships from the USA.", ogImageUrl: "", twitterHandle: "" },
   localization: { defaultLocale: "en", enabledLocales: ["en", "es", "fr", "ht"], defaultCountry: "US" },
   policies: { shipping: "", returns: "", privacy: "", terms: "" },
 };
@@ -95,7 +55,6 @@ export async function saveSection<K extends SettingSection>(section: K, value: P
   return setSetting(`settings:${section}`, { ...current, ...value });
 }
 
-/** Tout ce qu'il faut pour le rendu (header, footer, emails, SEO). */
 export const getBrand = cache(async () => {
   const [general, branding, contact, social, commerce, seo, localization] = await Promise.all([
     getSection("general"), getSection("branding"), getSection("contact"), getSection("social"), getSection("commerce"), getSection("seo"), getSection("localization"),
@@ -106,7 +65,6 @@ export const getBrand = cache(async () => {
 export const getEnabledCountries = async () => (await getSection("commerce")).enabledCountries;
 export const getEnabledCurrencies = async () => (await getSection("commerce")).enabledCurrencies;
 
-/** Compat : anciens appels getStore() */
 export const getStore = async () => {
   const b = await getBrand();
   return { name: b.storeName, tagline: b.tagline, email: b.contact.email, currency: b.commerce.defaultCurrency, locale: b.localization.defaultLocale };
