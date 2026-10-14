@@ -30,8 +30,8 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
   const parsed = credentials.safeParse({ email: formData.get("email"), password: formData.get("password") });
   if (!parsed.success) return { error: "Enter a valid email and a password of 8+ characters." };
 
-  const firstName = String(formData.get("firstName") ?? "").slice(0, 60);
-  const lastName = String(formData.get("lastName") ?? "").slice(0, 60);
+  const firstName = String(formData.get("firstName") ?? "").trim().slice(0, 60);
+  const lastName = String(formData.get("lastName") ?? "").trim().slice(0, 60);
 
   let hasSession = false;
 

@@ -29,7 +29,7 @@ export async function deleteAddress(id: string) {
   revalidatePath("/account/addresses");
 }
 
-const profileSchema = z.object({ firstName: z.string().max(60), lastName: z.string().max(60), phone: z.string().max(30), locale: z.string().max(5).optional(), currency: z.string().max(3).optional() });
+const profileSchema = z.object({ firstName: z.string().trim().max(60), lastName: z.string().trim().max(60), phone: z.string().trim().max(30), locale: z.string().max(5).optional(), currency: z.string().max(3).optional() });
 
 export async function updateProfile(formData: FormData) {
   const user = await requireUser();
