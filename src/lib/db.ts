@@ -30,7 +30,11 @@ function normalizeDatabaseUrl(value?: string) {
       // This disables prepared statements that otherwise cause PostgreSQL 42P05
       // errors such as: prepared statement "s0" already exists.
       if (!url.searchParams.has("pgbouncer")) url.searchParams.set("pgbouncer", "true");
-      if (!url.searchParams.has("connection_limit")) url.searchParams.set("connection_limit", "1");
+      // A single connection makes parallel page queries (categories, products,
+      // settings) wait on each other and fail with P2024 pool timeouts.
+      const limit = url.searchParams.get("connection_limit");
+      if (!limit || limit === "1") url.searchParams.set("connection_limit", "5");
+      if (!url.searchParams.has("pool_timeout")) url.searchParams.set("pool_timeout", "20");
     }
 
     return url.toString();
