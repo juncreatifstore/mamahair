@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
-import { createSupabaseAdmin, createSupabaseServer } from "@/lib/supabase/server";
+import { createSupabaseServer } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import { addressSchema } from "@/schemas/address";
 import { z } from "zod";
@@ -55,12 +55,16 @@ export async function deleteAccount(formData: FormData) {
   const authId = data.user?.id;
   if (!authId) redirect("/login?next=/account/settings");
 
-  const { error } = await createSupabaseAdmin().auth.admin.deleteUser(authId);
-  if (error) {
-    logger.error("account.delete.auth_failed", error);
+  // Suppression directe en base (rôle postgres) : ne dépend pas de la clé admin Supabase.
+  try {
+    await db.$transaction([
+      db.user.delete({ where: { id: user.id } }),
+      db.$executeRaw`delete from auth.users where id = ${authId}::uuid`,
+    ]);
+  } catch (error) {
+    logger.error("account.delete.failed", error);
     redirect("/account/settings?delete=error");
   }
-  await db.user.delete({ where: { id: user.id } });
   await supabase.auth.signOut().catch(() => undefined);
   redirect("/?account=deleted");
 }
